@@ -16,7 +16,13 @@ type rect = {width: float, height: float, left: float, top: float}
 type pointerEvent = {clientX: float, clientY: float, pointerId: int}
 type animationEvent = {animationName: string}
 
+@val @scope("document") external createElement: string => element = "createElement"
+@send external appendChild: (element, element) => unit = "appendChild"
+@set external setClassName: (element, string) => unit = "className"
+@send external setAttribute: (element, string, string) => unit = "setAttribute"
+
 @send external onPointer: (element, string, pointerEvent => unit) => unit = "addEventListener"
+@send external onClick: (element, string, unit => unit) => unit = "addEventListener"
 @send external onAnimation: (element, string, animationEvent => unit) => unit = "addEventListener"
 @send external onResize: (window, string, unit => unit) => unit = "addEventListener"
 @send external setPointerCapture: (element, int) => unit = "setPointerCapture"

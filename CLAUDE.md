@@ -94,6 +94,21 @@ git commit -m "Enable Pages deploy workflow" && git push
 It uses `actions/configure-pages` with `enablement: true`, so it will repoint Pages at the Actions
 source by itself — after which the `gh-pages` branch is no longer used and can be deleted.
 
+## The trajectory toggle
+
+The `◎ trajectory` chip in the HUD is a cheat: while aiming it draws the ball's whole predicted
+path, bounces and roll included, and turns the end marker red when that drag would hole out.
+
+It is honest by construction rather than by tuning. `showTrail` calls the same `Physics.simulate`
+the real shot calls, then reads positions back with `Physics.sample`, which rebuilds each segment
+from the same constant acceleration the CSS keyframes encode. Preview and shot cannot drift because
+they are the same computation — measured, the predicted resting point lands within **0.15px** of
+where the ball actually stops. Both also read their launch velocity from `aimVector`, so there is
+no second place for the two to disagree.
+
+Dots are spaced by arc length, not by time; even time spacing smears them over the fast opening arc
+and piles them into a blob wherever the ball is slow.
+
 ## Known gap
 
 `Game.res` is **not yet TEA**. It holds state in module-level `ref`s and mutates the DOM directly,

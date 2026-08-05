@@ -231,6 +231,40 @@ body {
   transition: opacity 0.12s ease;
 }
 
+/* ------------------------------------------------------------ trajectory */
+
+/* Positions come from the same simulation the keyframes are built from, so the
+   dots land exactly where the ball will be at that moment. */
+.trail {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.trail i {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: var(--ball);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.35);
+}
+/* Last dot is where the ball comes to rest. */
+.trail i:last-child {
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  background: none;
+  border: 2px solid var(--ball);
+}
+/* ...and it turns red when this drag actually holes out. */
+.trail.sinks i:last-child {
+  border-color: var(--flag);
+  background: color-mix(in oklab, var(--flag), transparent 55%);
+}
+
 /* ---------------------------------------------------------------- hud */
 
 .hud {
@@ -257,6 +291,27 @@ body {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+/* The HUD is click-through except for the toggle. */
+.chip-toggle {
+  pointer-events: auto;
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  opacity: 0.45;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+.chip-toggle:hover {
+  opacity: 0.75;
+}
+.chip-toggle[aria-pressed="true"] {
+  opacity: 1;
+  background: color-mix(in oklab, var(--flag), rgba(34, 22, 44, 0.32) 55%);
+}
+.chip-toggle b {
+  font-size: 13px;
+}
+
 .chip small {
   font-size: 10px;
   letter-spacing: 0.09em;

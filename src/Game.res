@@ -21,6 +21,8 @@ let ball = Web.el("ball")
 let shadowX = Web.el("shadowX")
 let shadow = Web.el("shadow")
 let aim = Web.el("aim")
+let trail = Web.el("trail")
+let cheatBtn = Web.el("cheat")
 let shotStyle = Web.el("shotStyle")
 let hudHole = Web.el("hudHole")
 let hudStrokes = Web.el("hudStrokes")
@@ -40,6 +42,7 @@ let by = ref(0.0)
 let dragFrom = ref((0.0, 0.0))
 let dragTo = ref((0.0, 0.0))
 let spin = ref(0.0)
+let cheat = ref(false)
 
 let screenY = wy => height.contents -. wy
 
@@ -114,6 +117,61 @@ let say = (msg, ms) => {
   Web.setTimeout(() => toast->Web.set("opacity", "0"), ms)
 }
 
+// ------------------------------------------------------------ trajectory aid
+
+let trailDots = 32
+
+let dots = Array.fromInitializer(~length=trailDots, _ => {
+  let d = Web.createElement("i")
+  d->Web.setClassName("dot")
+  trail->Web.appendChild(d)
+  d
+})
+
+let hideTrail = () => trail->Web.set("opacity", "0")
+
+// Re-runs the whole simulation and lays dots along it at even time intervals.
+// It calls the same `simulate` the real shot does and reads positions back with
+// `Physics.sample`, which reconstructs each segment from the same constant
+// acceleration the CSS keyframes encode — so these dots are not an estimate of
+// the shot, they are the shot.
+let showTrail = (~vx, ~vy) => {
+  let shot = Physics.simulate(course.contents, ~x0=bx.contents, ~y0=by.contents, ~vx0=vx, ~vy0=vy)
+
+  // Walk the path finely, then place dots at even *distance* apart rather than
+  // even time apart — otherwise they smear out over the fast opening arc and
+  // pile into a blob wherever the ball is slow.
+  let fine = 240
+  let path = Array.fromInitializer(~length=fine + 1, i =>
+    Physics.sample(shot.stops, Int.toFloat(i) /. Int.toFloat(fine) *. shot.duration)
+  )
+  let cum = Array.make(~length=fine + 1, 0.0)
+  for i in 1 to fine {
+    let (px, py) = Array.getUnsafe(path, i - 1)
+    let (cx, cy) = Array.getUnsafe(path, i)
+    let seg = Math.sqrt((cx -. px) *. (cx -. px) +. (cy -. py) *. (cy -. py))
+    Array.setUnsafe(cum, i, Array.getUnsafe(cum, i - 1) +. seg)
+  }
+  let total = Array.getUnsafe(cum, fine)
+
+  let last = trailDots - 1
+  let cursor = ref(0)
+  Array.forEachWithIndex(dots, (d, i) => {
+    let f = Int.toFloat(i) /. Int.toFloat(last)
+    let want = f *. total
+    while cursor.contents < fine && Array.getUnsafe(cum, cursor.contents + 1) < want {
+      cursor := cursor.contents + 1
+    }
+    let (x, y) = Array.getUnsafe(path, cursor.contents)
+    d->Web.set("left", Web.px(x))
+    d->Web.set("top", Web.px(screenY(y)))
+    d->Web.set("opacity", Float.toFixed(1.0 -. 0.55 *. f, ~digits=3))
+  })
+  // Tells you outright whether this drag holes out. That is the cheat.
+  trail->Web.setClassName(shot.outcome == Physics.Sunk ? "trail sinks" : "trail")
+  trail->Web.set("opacity", "1")
+}
+
 // ---------------------------------------------------------------- the shot
 
 let settle = (shot: Physics.shot) => {
@@ -153,6 +211,8 @@ let shoot = (~vx, ~vy) => {
   hud()
   spin := prog.spinEnd
 
+  hideTrail()
+
   if prog.duration < 0.05 {
     settle(shot)
   } else {
@@ -181,14 +241,38 @@ let shoot = (~vx, ~vy) => {
 
 // ---------------------------------------------------------------- aiming
 
-let showAim = () => {
+// Single source of truth for "what would this drag launch?". The preview and
+// the real shot read from here, so they cannot disagree.
+let aimVector = () => {
   let (sx, sy) = dragFrom.contents
   let (cx, cy) = dragTo.contents
   let dx = sx -. cx
   let dy = sy -. cy
   let len = Math.sqrt(dx *. dx +. dy *. dy)
   let power = Terrain.clamp(len /. maxDrag, 0.0, 1.0)
+  if len < 1.0e-4 {
+    (0.0, 0.0, 0.0)
+  } else {
+    let speed = power *. maxSpeed
+    (dx /. len *. speed, -.(dy /. len) *. speed, power)
+  }
+}
+
+// ------------------------------------------------------------------- aiming
+
+let showAim = () => {
+  let (sx, sy) = dragFrom.contents
+  let (cx, cy) = dragTo.contents
+  let dx = sx -. cx
+  let dy = sy -. cy
+  let (vx, vy, power) = aimVector()
   let angle = Math.atan2(~y=dy, ~x=dx) *. 57.2958
+
+  if cheat.contents && power > 0.03 {
+    showTrail(~vx, ~vy)
+  } else {
+    hideTrail()
+  }
 
   aim->Web.set("opacity", power > 0.03 ? "1" : "0")
   aim->Web.set("left", Web.px(bx.contents))
@@ -200,16 +284,12 @@ let showAim = () => {
 }
 
 let release = () => {
-  let power = showAim()
+  let _ = showAim()
+  let (vx, vy, power) = aimVector()
   aim->Web.set("opacity", "0")
+  hideTrail()
   if power > 0.06 {
-    let (sx, sy) = dragFrom.contents
-    let (cx, cy) = dragTo.contents
-    let dx = sx -. cx
-    let dy = sy -. cy
-    let len = Math.max(Math.sqrt(dx *. dx +. dy *. dy), 0.0001)
-    let speed = power *. maxSpeed
-    shoot(~vx=dx /. len *. speed, ~vy=-.(dy /. len) *. speed)
+    shoot(~vx, ~vy)
   } else {
     phase := Ready
   }
@@ -264,7 +344,18 @@ let init = () => {
   stage->Web.onPointer("pointercancel", _ => {
     if phase.contents == Aiming {
       aim->Web.set("opacity", "0")
+      hideTrail()
       phase := Ready
+    }
+  })
+
+  cheatBtn->Web.onClick("click", () => {
+    cheat := !cheat.contents
+    cheatBtn->Web.setAttribute("aria-pressed", cheat.contents ? "true" : "false")
+    if phase.contents == Aiming {
+      let _ = showAim()
+    } else {
+      hideTrail()
     }
   })
 

@@ -256,3 +256,37 @@ let simulate = (terrain: Terrain.t, ~x0, ~y0, ~vx0, ~vy0) => {
     endY: last.y,
   }
 }
+
+/**
+Position at an arbitrary time inside a shot.
+
+Uses the same constant-acceleration model the CSS keyframes encode, so an aim
+preview traces exactly what the browser is about to animate rather than a
+second, independent approximation of it.
+*/
+let sample = (stops: array<stop>, time: float) => {
+  let n = Array.length(stops)
+  if n == 0 {
+    (0.0, 0.0)
+  } else if n == 1 {
+    let s = Array.getUnsafe(stops, 0)
+    (s.x, s.y)
+  } else {
+    let i = ref(0)
+    while i.contents < n - 2 && Array.getUnsafe(stops, i.contents + 1).t <= time {
+      i := i.contents + 1
+    }
+    let a = Array.getUnsafe(stops, i.contents)
+    let b = Array.getUnsafe(stops, i.contents + 1)
+    let dt = b.t -. a.t
+    if dt <= 0.0 {
+      (a.x, a.y)
+    } else {
+      let u = Terrain.clamp(time -. a.t, 0.0, dt)
+      // Recover the segment's acceleration from its endpoints and entry speed.
+      let ax = 2.0 *. (b.x -. a.x -. a.vx *. dt) /. (dt *. dt)
+      let ay = 2.0 *. (b.y -. a.y -. a.vy *. dt) /. (dt *. dt)
+      (a.x +. a.vx *. u +. 0.5 *. ax *. u *. u, a.y +. a.vy *. u +. 0.5 *. ay *. u *. u)
+    }
+  }
+}
