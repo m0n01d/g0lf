@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#241a33" />
+    <title>g0lf</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="stage" class="stage">
+      <div class="sun"></div>
+
+      <div id="far2" class="ridge ridge-far"></div>
+      <div id="far1" class="ridge ridge-near"></div>
+
+      <!-- The ball sits *below* the terrain layers, so anything under the
+           surface is hidden for free — that is the whole sink animation. -->
+      <div id="ballX" class="ball-x">
+        <div id="ballY" class="ball-y">
+          <div id="ball" class="ball"></div>
+        </div>
+      </div>
+
+      <div id="crust" class="crust"></div>
+      <div id="ground" class="ground"></div>
+
+      <div id="shadowX" class="shadow-x"><div id="shadow" class="shadow"></div></div>
+
+      <div id="cup" class="cup"></div>
+      <div id="flag" class="flag"><i class="pole"></i><i class="pennant"></i></div>
+
+      <div id="aim" class="aim"></div>
+    </div>
+
+    <div class="hud">
+      <div class="chip"><b id="hudHole">1</b><small>hole</small></div>
+      <div class="chip"><b id="hudStrokes">0</b><small>strokes</small></div>
+      <div class="chip"><b id="hudTotal">0</b><small>total</small></div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <!-- Every shot is compiled into this element as @keyframes, then played. -->
+    <style id="shotStyle"></style>
+
+    <script type="module" src="/src/Game.res.mjs"></script>
+  </body>
+</html>

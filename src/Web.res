@@ -1,0 +1,42 @@
+// Hand-rolled externals. The surface this game needs is small: find elements,
+// set styles, listen for pointer and animationend. No render loop lives here.
+
+type element
+type style
+type window
+type rect = {width: float, height: float, left: float, top: float}
+
+@val @scope("document") external byId: string => Null.t<element> = "getElementById"
+@get external style: element => style = "style"
+@set external setText: (element, string) => unit = "textContent"
+@send external getBoundingClientRect: element => rect = "getBoundingClientRect"
+@send external setProperty: (style, string, string) => unit = "setProperty"
+@get external offsetWidth: element => float = "offsetWidth"
+
+type pointerEvent = {clientX: float, clientY: float, pointerId: int}
+type animationEvent = {animationName: string}
+
+@send external onPointer: (element, string, pointerEvent => unit) => unit = "addEventListener"
+@send external onAnimation: (element, string, animationEvent => unit) => unit = "addEventListener"
+@send external onResize: (window, string, unit => unit) => unit = "addEventListener"
+@send external setPointerCapture: (element, int) => unit = "setPointerCapture"
+
+@val external window: window = "window"
+@val external setTimeout: (unit => unit, int) => unit = "setTimeout"
+
+let el = id =>
+  switch byId(id)->Null.toOption {
+  | Some(e) => e
+  | None => panic(`missing element #${id}`)
+  }
+
+let set = (e, prop, value) => e->style->setProperty(prop, value)
+let px = (v: float) => Float.toFixed(v, ~digits=2) ++ "px"
+
+// Restart an animation that may already be running: clearing it and reading
+// layout forces the browser to treat the next assignment as a fresh animation.
+let restart = (e, value) => {
+  e->set("animation", "none")
+  let _ = e->offsetWidth
+  e->set("animation", value)
+}
