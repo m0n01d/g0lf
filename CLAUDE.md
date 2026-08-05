@@ -65,6 +65,35 @@ of the true parabola in flight and **0.71px** while rolling.
 slope change — because that is exactly where one Bézier stops being valid. A typical shot is ~15
 stops and ~5KB of generated CSS.
 
+## Deploying
+
+Live at **https://m0n01d.github.io/g0lf/**, served from the `gh-pages` branch.
+
+`vite.config.js` sets `base: "/g0lf/"` because project Pages serve under the repo name. To publish
+a new build:
+
+```sh
+npm run build
+git worktree add --detach /tmp/ghp && cd /tmp/ghp
+git checkout gh-pages
+find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+cp -r /path/to/g0lf/dist/. . && touch .nojekyll
+git add -A && git commit -m "Publish built site" && git push
+```
+
+`docs/github-pages-workflow.yml` automates exactly this on every push. It is **not** active — it
+lives in `docs/` because a cloud sandbox's token lacks the `workflow` OAuth scope and cannot write
+`.github/workflows/`. To turn it on, from a local checkout with normal credentials:
+
+```sh
+mkdir -p .github/workflows
+git mv docs/github-pages-workflow.yml .github/workflows/deploy.yml
+git commit -m "Enable Pages deploy workflow" && git push
+```
+
+It uses `actions/configure-pages` with `enablement: true`, so it will repoint Pages at the Actions
+source by itself — after which the `gh-pages` branch is no longer used and can be deleted.
+
 ## Known gap
 
 `Game.res` is **not yet TEA**. It holds state in module-level `ref`s and mutates the DOM directly,
