@@ -31,7 +31,7 @@ let toast = Web.el("toast")
 
 let width = ref(1000.0)
 let height = ref(600.0)
-let course = ref(Terrain.generate(~seed=1, ~width=1000.0, ~height=600.0))
+let course = ref(Terrain.generate(~hole=1, ~width=1000.0, ~height=600.0))
 let holeNo = ref(1)
 let strokes = ref(0)
 let total = ref(0)
@@ -189,7 +189,7 @@ let settle = (shot: Physics.shot) => {
     Web.setTimeout(() => {
       holeNo := holeNo.contents + 1
       strokes := 0
-      let t = Terrain.generate(~seed=holeNo.contents, ~width=width.contents, ~height=height.contents)
+      let t = Terrain.generate(~hole=holeNo.contents, ~width=width.contents, ~height=height.contents)
       course := t
       drawCourse()
       placeBall(t.teeX, t.teeY +. Physics.ballR)
@@ -301,7 +301,7 @@ let layout = () => {
   let r = stage->Web.getBoundingClientRect
   width := r.width
   height := r.height
-  course := Terrain.generate(~seed=holeNo.contents, ~width=r.width, ~height=r.height)
+  course := Terrain.generate(~hole=holeNo.contents, ~width=r.width, ~height=r.height)
   drawCourse()
   let t = course.contents
   placeBall(t.teeX, t.teeY +. Physics.ballR)

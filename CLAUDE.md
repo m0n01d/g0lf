@@ -47,8 +47,9 @@ So a golf arc is a quadratic ease-out followed by a quadratic ease-in — not "l
 X and Y ride two nested elements so they can carry independent easings; one element cannot, because
 a single keyframe percentage only carries one timing function.
 
-Accuracy is verified, not assumed: across 360 simulated shots the CSS curve stays within **0.42px**
-of the true parabola in flight and **0.71px** while rolling.
+Accuracy is verified, not assumed: across 360 simulated shots the CSS curve stays within **0.67px**
+of the true parabola in flight and **1.0px** while rolling. A typical shot is ~13 keyframe stops and
+~6KB of generated CSS.
 
 ## Layout
 
@@ -62,8 +63,42 @@ of the true parabola in flight and **0.71px** while rolling.
 | `src/Game.res` | glue: pointer input, hole progression |
 
 `Physics.res` cuts a new segment at every acceleration change — bounce, apex, direction reversal,
-slope change — because that is exactly where one Bézier stops being valid. A typical shot is ~15
-stops and ~5KB of generated CSS.
+slope change — because that is exactly where one Bézier stops being valid.
+
+`Css.thin` caps a shot at 160 keyframes. It exists because a ball creeping along a crease on broken
+ground once produced 10,143 stops and 3.6MB of CSS for a single shot. Flight stops carry the arc and
+are always kept; only surplus rolling stops are subsampled. In practice 0.3% of shots touch it.
+
+## Difficulty
+
+`Terrain.difficulty` ramps 0..1 over the first ~34 holes, then holds. It drives:
+
+| lever | hole 1 | hole 35+ |
+|---|---|---|
+| dune amplitude | 0.07 × height | 0.17 × height |
+| octave falloff (`dunes ~detail`) | 1.65 | 1.25 — choppier, harder to read a bounce |
+| tee-to-cup carry | ~470px | ~660px |
+| flat landing pad at the cup | 34px core | 18px core |
+| feature pool | plain dunes only | ridge / gully / mesa / bowl |
+
+Each hole gets one shaped feature: a `Ridge` or `Gully` to carry between tee and cup, or a `Plateau`
+or `Bowl` at the cup itself. The pool widens as the round goes on.
+
+Two invariants keep it playable, and both are load-bearing:
+
+- **`Terrain.limitSlope` caps any span at slope 1.3.** Stacked octaves otherwise reach slope 10 —
+  an 84° wall the ball just ricochets off. It runs between two `flatten` passes because the two
+  fight each other: the limiter can tilt a small pad, and a pad's blend against tall neighbouring
+  terrain is itself steep. Two rounds converge.
+- **`Physics` rests a ball wedged in a notch**, regardless of how steep the faces are. Terrain can
+  now be steeper than `rollMu`, so without this the ball creeps in the crease until the flight cap.
+
+Verified by playing holes 1–60 with a greedy solver: every hole is finishable, and the number of
+aims (out of ~2500 sampled) that hole out in one shot falls from 104 to 44 — the target window
+narrows by well over half while never closing.
+
+`preview.html` renders a grid of holes for eyeballing the curve; it is dev-only and is not part of
+the production build.
 
 ## Deploying
 

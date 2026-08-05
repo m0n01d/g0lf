@@ -87,6 +87,46 @@ let dedupe = (stops: array<Physics.stop>) => {
   out
 }
 
+/** Hard ceiling on how many keyframes one shot may emit. */
+let budget = 160
+
+/**
+Enforce `budget`.
+
+A degenerate roll — a ball creeping along a crease on very broken ground — can
+otherwise produce thousands of stops and megabytes of CSS, which is a stutter
+rather than an animation. Flight stops carry the arc and are few, so they are
+always kept; surplus rolling stops are subsampled evenly.
+
+This bounds the pathological case only: a normal shot is an order of magnitude
+under the budget and passes through untouched, still exact.
+*/
+let thin = (stops: array<Physics.stop>) => {
+  let n = Array.length(stops)
+  if n <= budget {
+    stops
+  } else {
+    let flights = Array.reduce(stops, 0, (a, s) => s.flying ? a + 1 : a)
+    let rolls = n - flights
+    let room = budget - flights - 2
+    let every = room <= 0 ? rolls : Int.fromFloat(Math.ceil(Int.toFloat(rolls) /. Int.toFloat(room)))
+    let every = every < 1 ? 1 : every
+    let out = []
+    let seen = ref(0)
+    Array.forEachWithIndex(stops, (s, i) => {
+      if i == 0 || i == n - 1 || s.flying {
+        Array.push(out, s)
+      } else {
+        if Int.mod(seen.contents, every) == 0 {
+          Array.push(out, s)
+        }
+        seen := seen.contents + 1
+      }
+    })
+    out
+  }
+}
+
 // Everything the DOM needs for one shot: the stylesheet text plus the names.
 type program = {
   css: string,
@@ -103,7 +143,7 @@ type program = {
 let spinPerPx = 57.2958 /. Physics.ballR *. 0.55
 
 let compile = (shot: Physics.shot, ~stageH, ~id, ~spin0) => {
-  let stops = dedupe(shot.stops)
+  let stops = thin(dedupe(shot.stops))
   let first = Array.getUnsafe(stops, 0)
   let duration = shot.duration
 

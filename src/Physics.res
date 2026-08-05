@@ -17,9 +17,9 @@ let restSpeed = 14.0
 // Flight segments are exact, so they are never subdivided. Rolling crosses
 // terrain spans whose slopes differ slightly, so it gets a tolerance and a
 // time cap instead of a stop at every 8px span boundary.
-let slopeTol = 0.035
+let slopeTol = 0.045
 let maxRollSegment = 0.22
-let maxFlight = 16.0
+let maxFlight = 12.0
 
 type stop = {
   t: float,
@@ -148,10 +148,18 @@ let simulate = (terrain: Terrain.t, ~x0, ~y0, ~vx0, ~vy0) => {
       let downhill = -.gravity *. s /. denom
       let grip = rollMu *. gravity /. denom
 
+      // A ball wedged in the bottom of a notch is held by the two faces, no
+      // matter how steep they are. Without this, terrain steeper than rollMu
+      // leaves the ball creeping in the crease forever, emitting a keyframe
+      // per step, and only the flight cap ends the shot.
+      let notch =
+        Terrain.slopeAt(terrain, x.contents -. terrain.step) < 0.0 &&
+          Terrain.slopeAt(terrain, x.contents +. terrain.step) > 0.0
+
       // Static friction. Without this the ball chatters across vx = 0 forever
       // on any slope shallow enough to hold it, and every step becomes a
       // direction change — which is a keyframe.
-      if Math.abs(vx.contents) < restSpeed && Math.abs(s) <= rollMu {
+      if Math.abs(vx.contents) < restSpeed && (Math.abs(s) <= rollMu || notch) {
         vx := 0.0
         vy := 0.0
         done := true

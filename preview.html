@@ -1,0 +1,40 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>terrain preview</title>
+<link rel="stylesheet" href="/src/style.css">
+<style>
+  body{overflow:auto;background:#150f24}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}
+  .panel{position:relative;height:300px;overflow:hidden;border-radius:8px;
+    background:linear-gradient(to bottom,var(--sky-top),var(--sky-mid) 45%,var(--sky-low) 75%,var(--sky-horizon))}
+  .panel .crust,.panel .ground{bottom:-8px;height:calc(100% + 8px)}
+  .tag{position:absolute;left:8px;top:6px;font:700 11px system-ui;color:#fff6e6;opacity:.85;z-index:9}
+  .pill{position:absolute;right:8px;top:6px;font:600 10px system-ui;color:#ffd8a8;opacity:.9;z-index:9}
+</style></head>
+<body><div class="grid" id="g"></div>
+<script type="module">
+import * as T from "/src/Terrain.res.mjs"
+const holes = [1, 6, 14, 24, 38, 55]
+const W = 560, H = 300
+const poly = (ys, step, w, h) => {
+  const p = [`0px ${h}px`]
+  ys.forEach((y, i) => { const x = i * step; if (x <= w + step) p.push(`${Math.min(x, w)}px ${(h - y).toFixed(1)}px`) })
+  p.push(`${w}px ${h}px`)
+  return `polygon(${p.join(",")})`
+}
+for (const hole of holes) {
+  const t = T.generate(hole, W, H)
+  const d = document.createElement("div"); d.className = "panel"
+  const clip = poly(t.ys, t.step, W, H)
+  const maxS = Math.max(...t.ys.slice(0, -1).map((_, i) => Math.abs(T.slopeAt(t, i * t.step))))
+  d.innerHTML = `<span class="tag">hole ${hole}</span>
+    <span class="pill">carry ${Math.round(Math.abs(t.holeX - t.teeX))}px &middot; max slope ${maxS.toFixed(2)}</span>
+    <div class="ridge ridge-far" style="clip-path:${poly(T.backdrop(hole, W, H, 1), 26, W, H)}"></div>
+    <div class="ridge ridge-near" style="clip-path:${poly(T.backdrop(hole, W, H, 0), 26, W, H)}"></div>
+    <div class="crust" style="clip-path:${clip}"></div>
+    <div class="ground" style="clip-path:${clip}"></div>
+    <div class="cup" style="left:${t.holeX - 14}px;top:${H - t.holeY - 3}px;width:28px"></div>
+    <div class="flag" style="left:${t.holeX}px;top:${H - t.holeY}px"><i class="pole"></i><i class="pennant"></i></div>
+    <div class="ball-x" style="left:${t.teeX}px"><div class="ball-y" style="top:${H - t.teeY - 7}px"><div class="ball"></div></div></div>`
+  document.getElementById("g").appendChild(d)
+}
+</script></body></html>
