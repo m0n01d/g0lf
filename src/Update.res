@@ -1,0 +1,97 @@
+// Pure state transitions. No DOM, no timers, no randomness beyond the seeded
+// generator — so this module is testable in plain Node.
+
+open Model
+
+let maxDrag = 190.0 // world units of pull-back for full power
+let maxSpeed = 1280.0
+
+/**
+What a drag would launch. Both the preview and the real shot read from here, so
+they cannot disagree.
+
+Points are in world coordinates with y up, so the drag vector needs no sign
+flipping: pulling down-left launches up-right.
+*/
+let aimVector = (from: point, to_: point) => {
+  let dx = from.x -. to_.x
+  let dy = from.y -. to_.y
+  let len = Math.sqrt(dx *. dx +. dy *. dy)
+  let power = Terrain.clamp(len /. maxDrag, 0.0, 1.0)
+  if len < 1.0e-4 {
+    (0.0, 0.0, 0.0)
+  } else {
+    let speed = power *. maxSpeed
+    (dx /. len *. speed, dy /. len *. speed, power)
+  }
+}
+
+let settle = (model, shot: Physics.shot) => {
+  let m = {...model, ball: {x: shot.endX, y: shot.endY}}
+  switch shot.outcome {
+  | Physics.Sunk => (
+      {
+        ...m,
+        phase: Between,
+        total: m.total + m.strokes,
+        toast: Some(m.strokes == 1 ? "hole in one" : `sunk in ${Int.toString(m.strokes)}`),
+      },
+      Batch([After(900, AdvanceHole), After(2000, ToastExpired)]),
+    )
+  | Physics.Rest => ({...m, phase: Ready}, NoCmd)
+  }
+}
+
+let launch = (model, from, to_) => {
+  let (vx, vy, power) = aimVector(from, to_)
+  if power <= 0.06 {
+    ({...model, phase: Ready}, NoCmd)
+  } else {
+    let shot = Physics.simulate(model.course, ~x0=model.ball.x, ~y0=model.ball.y, ~vx0=vx, ~vy0=vy)
+    let shotId = model.shotId + 1
+    let program = Css.compile(shot, ~stageH=Terrain.worldH, ~id=shotId, ~spin0=model.spin)
+    let m = {
+      ...model,
+      strokes: model.strokes + 1,
+      spin: program.spinEnd,
+      shotId,
+      program: Some(program),
+      toast: None,
+    }
+    // A shot too short to animate is settled immediately rather than handed to
+    // the browser, because a zero-length animation never fires animationend.
+    program.duration < 0.05 ? settle(m, shot) : ({...m, phase: Watching(shot)}, NoCmd)
+  }
+}
+
+let nextHole = model => {
+  let hole = model.hole + 1
+  let course = Terrain.generate(~hole)
+  (
+    {...model, hole, strokes: 0, course, ball: teeOf(course), phase: Ready, program: None},
+    NoCmd,
+  )
+}
+
+let update = (model, msg) =>
+  switch (msg, model.phase) {
+  // A resize only changes how the world is projected. The course is generated
+  // in fixed world units, so rotating the device no longer rebuilds it under
+  // the ball.
+  | (Rescaled(scale), _) => ({...model, scale}, NoCmd)
+  | (ToggledCheat, _) => ({...model, cheat: !model.cheat}, NoCmd)
+  | (ToastExpired, _) => ({...model, toast: None}, NoCmd)
+
+  | (PointerDown(p), Ready) => ({...model, phase: Aiming({from: p, to_: p}), toast: None}, NoCmd)
+  | (PointerMoved(p), Aiming({from})) => ({...model, phase: Aiming({from, to_: p})}, NoCmd)
+  | (PointerUp, Aiming({from, to_})) => launch(model, from, to_)
+  | (PointerCancelled, Aiming(_)) => ({...model, phase: Ready}, NoCmd)
+
+  | (ShotEnded, Watching(shot)) => settle(model, shot)
+  | (AdvanceHole, Between) => nextHole(model)
+
+  // Anything else is a message that does not apply to the current phase —
+  // a stray pointer during flight, a late timer. Ignoring it is the whole
+  // reason the phase is a variant.
+  | _ => (model, NoCmd)
+  }

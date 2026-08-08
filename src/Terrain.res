@@ -16,6 +16,18 @@ type t = {
 
 let cupR = 14.0
 
+/**
+The course is generated in a fixed virtual space and scaled to the viewport at
+render time, so hole N is the same course on every device. Generating in screen
+pixels made the shape depend on the window size, which contradicted the whole
+point of seeding by hole number — and meant a resize had to rebuild the course
+underneath the ball.
+600 tall with terrain clamped to 0.60 of it means the dunes need only
+`0.36 * viewportWidth` of vertical room, which every realistic screen has.
+*/
+let worldW = 1000.0
+let worldH = 600.0
+
 /** The one shaped obstacle a hole is built around. */
 type feature =
   | Dunes // plain rolling ground
@@ -168,7 +180,9 @@ let dunes = (r: Rand.t, ~width, ~step, ~count, ~base, ~amp, ~detail) => {
 Build hole N. `hole` is both the seed and the difficulty input, so a given hole
 number is always the same course and always the same challenge.
 */
-let generate = (~hole, ~width, ~height) => {
+let generate = (~hole) => {
+  let width = worldW
+  let height = worldH
   let r = Rand.make(hole)
   let d = difficulty(hole)
   let step = 8.0
@@ -265,8 +279,9 @@ let generate = (~hole, ~width, ~height) => {
 }
 
 // Decorative background ridges. No physics, just parallax depth.
-let backdrop = (~seed, ~width, ~height, ~layer) => {
-  let r = Rand.make(seed * 977 + layer * 31)
+let backdrop = (~hole, ~layer) => {
+  let (width, height) = (worldW, worldH)
+  let r = Rand.make(hole * 977 + layer * 31)
   let step = 26.0
   let count = Int.fromFloat(width /. step) + 3
   dunes(

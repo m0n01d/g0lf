@@ -19,31 +19,36 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
+    <!-- Everything inside #world is positioned in fixed 1000x600 world units;
+         a single scale() maps it to the viewport. That is why hole N is the
+         same course on every device. -->
     <div id="stage" class="stage">
-      <div class="sun"></div>
+      <div id="world" class="world">
+        <div class="sun"></div>
 
-      <div id="far2" class="ridge ridge-far"></div>
-      <div id="far1" class="ridge ridge-near"></div>
+        <div id="far2" class="ridge ridge-far"></div>
+        <div id="far1" class="ridge ridge-near"></div>
 
-      <!-- The ball sits *below* the terrain layers, so anything under the
-           surface is hidden for free — that is the whole sink animation. -->
-      <div id="ballX" class="ball-x">
-        <div id="ballY" class="ball-y">
-          <div id="ball" class="ball"></div>
+        <!-- The ball sits *below* the terrain layers, so anything under the
+             surface is hidden for free — that is the whole sink animation. -->
+        <div id="ballX" class="ball-x">
+          <div id="ballY" class="ball-y">
+            <div id="ball" class="ball"></div>
+          </div>
         </div>
+
+        <div id="crust" class="crust"></div>
+        <div id="ground" class="ground"></div>
+
+        <div id="shadowX" class="shadow-x"><div id="shadow" class="shadow"></div></div>
+
+        <div id="trail" class="trail"></div>
+
+        <div id="cup" class="cup"></div>
+        <div id="flag" class="flag"><i class="pole"></i><i class="pennant"></i></div>
+
+        <div id="aim" class="aim"></div>
       </div>
-
-      <div id="crust" class="crust"></div>
-      <div id="ground" class="ground"></div>
-
-      <div id="shadowX" class="shadow-x"><div id="shadow" class="shadow"></div></div>
-
-      <div id="trail" class="trail"></div>
-
-      <div id="cup" class="cup"></div>
-      <div id="flag" class="flag"><i class="pole"></i><i class="pennant"></i></div>
-
-      <div id="aim" class="aim"></div>
     </div>
 
     <div class="hud">

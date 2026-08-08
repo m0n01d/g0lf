@@ -53,13 +53,25 @@ body {
   );
 }
 
+/* Fixed world box. One scale() on this element projects world units to the
+   viewport; every child below is authored in world units and never needs to
+   know the screen size. transform-origin pins the ground to the bottom edge. */
+.world {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1000px;
+  height: 600px;
+  transform-origin: 0 100%;
+}
+
 .sun {
   position: absolute;
-  left: 50%;
-  top: 52%;
-  width: 17vmin;
-  height: 17vmin;
-  margin-left: -8.5vmin;
+  left: 500px;
+  top: 330px;
+  width: 108px;
+  height: 108px;
+  margin-left: -54px;
   border-radius: 50%;
   background: radial-gradient(circle, #ffeccc 0%, #ffd79c 56%, #ffbe7d 70%, rgba(255, 180, 120, 0.22) 71%, transparent 78%);
   opacity: 0.95;

@@ -60,7 +60,10 @@ of the true parabola in flight and **1.0px** while rolling. A typical shot is ~1
 | `src/Physics.res` | one-shot simulation; emits the segment boundaries (`stop`s) |
 | `src/Css.res` | `stop`s -> `@keyframes` with per-segment `cubic-bezier` |
 | `src/Web.res` | hand-written DOM bindings (no `%raw`, no `Obj.magic`) |
-| `src/Game.res` | glue: pointer input, hole progression |
+| `src/Model.res` | `model`, `msg`, `cmd`, `init` — the whole of the state |
+| `src/Update.res` | `update: (model, msg) => (model, cmd)` — pure, no DOM |
+| `src/View.res` | the only module that writes to the DOM |
+| `src/Game.res` | runtime: dispatch loop, command interpreter, subscriptions |
 
 `Physics.res` cuts a new segment at every acceleration change — bounce, apex, direction reversal,
 slope change — because that is exactly where one Bézier stops being valid.
@@ -144,11 +147,41 @@ no second place for the two to disagree.
 Dots are spaced by arc length, not by time; even time spacing smears them over the fast opening arc
 and piles them into a blob wherever the ball is slow.
 
-## Known gap
+## Architecture (TEA)
 
-`Game.res` is **not yet TEA**. It holds state in module-level `ref`s and mutates the DOM directly,
-which is fine for a prototype but violates the Model / Msg / update / view rule in the shared
-conventions. Restructure it before building the game out.
+Model / Msg / update / view, with effects described as `cmd` values and interpreted by `Game.res`.
+`update` is pure — 33 assertions run against it in plain Node with no DOM, covering the stroke
+cycle, hole progression, phase guards, and the resize invariants.
+
+Two things are worth knowing before editing `View.res`:
+
+- **The view diffs against the previous model, and that is correctness, not optimisation.**
+  Re-assigning `animation` on the ball *restarts the shot*, so the view must not touch an animation
+  property unless `shotId` actually changed.
+- **The ball's position during flight is deliberately not in the model.** The browser owns it while
+  the keyframes play; the model only knows which shot is in flight. `animationend` is the only
+  frame signal in the game, and it resolves to `shot.endX/endY`.
+
+Installing keyframes is a view concern rather than a `cmd`, because it is a pure function of
+`(program, shotId)` — modelling it as a command would give two places the power to start an
+animation.
+
+## World coordinates
+
+The course is generated in a fixed **1000 x 600** virtual space and projected with a single
+`transform: scale()` on `#world`. Everything below that element — terrain, ball, cup, trail,
+and the generated `@keyframes` — is authored in world units and never sees the screen size.
+
+This is what makes "hole N is always the same course" true. Generating in screen pixels made the
+shape depend on the window, and meant a resize rebuilt the course underneath the ball.
+
+Scale is `viewportWidth / 1000`: the gameplay axis is horizontal, so the whole hole is always
+visible and spare vertical space simply becomes more sky. Terrain is clamped to 0.60 of world
+height, so the dunes need only `0.36 x viewportWidth` of vertical room — true of any real screen.
+
+**Known trade-off:** on a tall portrait phone this leaves the course as a small band at the bottom
+(a 5:3 world does not fit a 1:2 screen). Landscape is excellent. Fixing portrait properly means a
+camera that scales to fit height and pans horizontally to follow the ball.
 
 ## Use `resq` when editing the `.res` files here
 

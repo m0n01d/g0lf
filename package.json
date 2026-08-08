@@ -8,7 +8,8 @@
     "res:dev": "rescript build -w",
     "dev": "rescript build && vite",
     "build": "rescript build && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "rescript build && node test/update.test.mjs"
   },
   "devDependencies": {
     "rescript": "12.3.0",
