@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "rescript": "12.3.0",
-    "vite": "^7.0.0"
+    "vite": "^7.0.0",
+    "vite-plugin-pwa": "^1.3.0"
   }
 }
