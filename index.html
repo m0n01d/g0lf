@@ -16,14 +16,23 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="g0lf" />
-    <script type="module" crossorigin src="/g0lf/assets/index-CLEWB2yt.js"></script>
-    <link rel="stylesheet" crossorigin href="/g0lf/assets/index-1gMAS5Q2.css">
+    <script type="module" crossorigin src="/g0lf/assets/index-nMpzQAH7.js"></script>
+    <link rel="stylesheet" crossorigin href="/g0lf/assets/index-DsuZwLsz.css">
   <link rel="manifest" href="/g0lf/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/g0lf/registerSW.js"></script></head>
   <body>
     <!-- Everything inside #world is positioned in fixed 1000x600 world units;
          a single scale() maps it to the viewport. That is why hole N is the
          same course on every device. -->
     <div id="stage" class="stage">
+      <!-- Ambient sky. Purely decorative, purely CSS: no id, so the view never
+           touches it and it can never collide with a shot's keyframes. It sits
+           before #world so terrain and ball paint over it. -->
+      <div class="stars stars-a"></div>
+      <div class="stars stars-b"></div>
+      <div class="clouds clouds-far"></div>
+      <div class="clouds clouds-mid"></div>
+      <div class="clouds clouds-near"></div>
+
       <div id="world" class="world">
         <div class="sun"></div>
 
