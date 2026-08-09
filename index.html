@@ -16,8 +16,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="g0lf" />
-    <script type="module" crossorigin src="/g0lf/assets/index-tOqwjiaF.js"></script>
-    <link rel="stylesheet" crossorigin href="/g0lf/assets/index-ClK3HmYO.css">
+    <script type="module" crossorigin src="/g0lf/assets/index-DjD22PuA.js"></script>
+    <link rel="stylesheet" crossorigin href="/g0lf/assets/index-kXCrXaJl.css">
   <link rel="manifest" href="/g0lf/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/g0lf/registerSW.js"></script></head>
   <body>
     <!-- Everything inside #world is positioned in fixed 1000x600 world units;
@@ -62,6 +62,12 @@
         <div id="flag" class="flag"><i class="pole"></i><i class="pennant"></i></div>
 
         <div id="aim" class="aim"></div>
+      </div>
+      <!-- Blowing sand, in front of the course. Invisible until the wind is
+           strong; both its opacity and its speed come from --wind. -->
+      <div class="sand" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
       </div>
     </div>
 
