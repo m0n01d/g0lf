@@ -9,9 +9,13 @@
     "dev": "rescript build && vite",
     "build": "rescript build && vite build",
     "preview": "vite preview",
-    "test": "rescript build && node test/update.test.mjs"
+    "test": "rescript build && node test/update.test.mjs",
+    "test:browser": "node test/browser.mjs",
+    "check": "rescript build && vite build && node test/update.test.mjs && node test/browser.mjs"
   },
   "devDependencies": {
+    "playwright": "^1.62.1",
+    "pngjs": "^7.0.0",
     "rescript": "12.3.0",
     "vite": "^7.0.0",
     "vite-plugin-pwa": "^1.3.0"

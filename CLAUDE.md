@@ -51,6 +51,41 @@ Accuracy is verified, not assumed: across 360 simulated shots the CSS curve stay
 of the true parabola in flight and **1.0px** while rolling. A typical shot is ~13 keyframe stops and
 ~6KB of generated CSS.
 
+## Before saying a change works
+
+```sh
+npm run check      # rescript build + vite build + unit tests + browser tests
+```
+
+`npm test` alone only covers `update`. **`npm run check` is the gate**: it builds the
+production bundle, serves it, and drives it in a real browser — because every bug that
+has reached the user got past unit tests by being invisible to them.
+
+`test/browser.mjs` exists as a list of things that shipped broken. Each check is a scar:
+
+| check | the bug it exists for |
+|---|---|
+| five drags in a row register | `setPointerCapture` made only the first shot of a session fire |
+| cup/flag/terrain differ per hole | the redraw was keyed on `run.hole`, leaving the DOM a hole behind |
+| sky moves >10% of pixels in 5s | the first ambient sky was too subtle to perceive at all |
+| each cloud band loops seamlessly | tile-edge clipping showed as a hard rectangle in the sky |
+| predicted resting point within 1px | the trajectory cheat must not drift from the real shot |
+| no page or console errors | catches the silent ones |
+
+Two rules learned the hard way:
+
+- **Check the outcome, not the mechanism.** "The keyframes are in the CSS" and "the hash
+  changed" are not evidence that anything looks right. Screenshot it, diff it, measure it.
+- **Prove a new regression test fails against the bug**, then fix it. A green test that
+  never went red is worthless. Two of these were themselves broken when first written —
+  one clipped the region it was meant to inspect, one reset the state it was meant to advance.
+
+It can also be pointed at a deployed URL:
+
+```sh
+node test/browser.mjs https://m0n01d.github.io/g0lf/
+```
+
 ## Layout
 
 | file | job |
