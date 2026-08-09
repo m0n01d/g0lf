@@ -264,7 +264,9 @@ console.log(`\nchecking ${baseUrl}\n`)
     // Hide the world entirely so only the band under test can differ.
     await p.evaluate(only => {
       document.getElementById("world").style.visibility = "hidden"
-      for (const el of document.querySelectorAll(".clouds, .stars"))
+      // Birds too: one crossing the frame at only one of the two sampled
+      // times made a band look like it had a seam when it did not.
+      for (const el of document.querySelectorAll(".clouds, .stars, .bird"))
         el.style.visibility = el.classList.contains(only) ? "visible" : "hidden"
     }, cls)
     const a0 = await at(0), aD = await at(dur), aH = await at(dur / 2)
@@ -274,11 +276,74 @@ console.log(`\nchecking ${baseUrl}\n`)
   await p.context().close()
 }
 
+// ------------------------------- 6b. stars, flag wind and birds
+{
+  const p = await newPage()
+  const freeze = ms => p.evaluate(t => {
+    for (const a of document.getAnimations()) { a.pause(); a.currentTime = t }
+  }, ms)
+  // Clip below the HUD and above the sun/terrain, so only sky is measured.
+  const band = { x: 0, y: 95, width: 900, height: 160 }
+  const brightPixels = async ms => {
+    await freeze(ms); await p.waitForTimeout(80)
+    const png = PNG.sync.read(await p.screenshot({ clip: band }))
+    let n = 0
+    for (let i = 0; i < png.data.length; i += 4)
+      if (png.data[i] > 200 && png.data[i + 1] > 195 && png.data[i + 2] > 185) n++
+    return n
+  }
+  // Stars must be big and bright enough to actually register as points of light.
+  const peak = Math.max(await brightPixels(0), await brightPixels(2400), await brightPixels(4400))
+  ok("stars are bright enough to read as stars (>=60 near-white px)", peak >= 60, "peak=" + peak)
+
+  // ...and must visibly change brightness over a couple of seconds.
+  const lo = await brightPixels(0), hi = await brightPixels(3200)
+  ok("stars visibly twinkle within ~3s", Math.abs(hi - lo) >= 12, `${lo} -> ${hi}`)
+
+  // The sky as a whole must now move perceptibly in three seconds, not five.
+  const shot = async ms => { await freeze(ms); await p.waitForTimeout(80)
+    return p.screenshot({ clip: { x: 0, y: 0, width: 900, height: 430 } }) }
+  const a = PNG.sync.read(await shot(0)), b2 = PNG.sync.read(await shot(3000))
+  let over = 0
+  for (let i = 0; i < a.data.length; i += 4) {
+    const d = Math.max(Math.abs(a.data[i] - b2.data[i]), Math.abs(a.data[i + 1] - b2.data[i + 1]),
+      Math.abs(a.data[i + 2] - b2.data[i + 2]))
+    if (d >= 4) over++
+  }
+  const pct = 100 * over / (a.data.length / 4)
+  ok("the sky moves perceptibly within three seconds (>12%)", pct > 12, `${pct.toFixed(1)}%`)
+
+  // The flag must actually ripple.
+  const flagAt = async ms => { await freeze(ms); await p.waitForTimeout(60)
+    return p.evaluate(() => getComputedStyle(document.querySelector(".flag .pennant")).transform) }
+  const f1 = await flagAt(0), f2 = await flagAt(880)
+  ok("the flag ripples in the wind", f1 !== f2, `${f1} vs ${f2}`)
+  const poleAt = async ms => { await freeze(ms); await p.waitForTimeout(60)
+    return p.evaluate(() => getComputedStyle(document.querySelector(".flag .pole")).transform) }
+  ok("the flagpole sways", (await poleAt(0)) !== (await poleAt(1400)))
+
+  // A bird crosses the sky.
+  const birdAt = async ms => { await freeze(ms); await p.waitForTimeout(60)
+    return p.evaluate(() => {
+      const b = document.querySelector(".bird-1"), r = b.getBoundingClientRect()
+      return { left: Math.round(r.left), opacity: +getComputedStyle(b).opacity }
+    }) }
+  const b1 = await birdAt(6000), b2p = await birdAt(11000)
+  ok("a bird is on screen partway through its cycle",
+    b1.left > -40 && b1.left < 900 && b1.opacity > 0.4, JSON.stringify(b1))
+  ok("the bird flies across", b2p.left - b1.left > 60, `${b1.left} -> ${b2p.left}`)
+  ok("the bird is hidden for part of the cycle", (await birdAt(45000)).opacity < 0.1)
+  const wingAt = async ms => { await freeze(ms); await p.waitForTimeout(60)
+    return p.evaluate(() => getComputedStyle(document.querySelector(".bird-1 .l")).transform) }
+  ok("the bird flaps", (await wingAt(6000)) !== (await wingAt(6210)))
+  await p.context().close()
+}
+
 // ------------------------------------------------- 7. reduced motion
 {
   const p = await newPage({ reducedMotion: "reduce" })
   const n = await p.evaluate(() => document.getAnimations()
-    .map(a => a.animationName).filter(x => /drift|twinkle|disc|flag/.test(x)).length)
+    .map(a => a.animationName).filter(x => /drift|twinkle|disc|flag|pole|bird|flap/.test(x)).length)
   ok("prefers-reduced-motion silences the ambient sky", n === 0, "still running: " + n)
   await p.context().close()
 }

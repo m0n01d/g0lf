@@ -70,6 +70,8 @@ has reached the user got past unit tests by being invisible to them.
 | sky moves >10% of pixels in 5s | the first ambient sky was too subtle to perceive at all |
 | each cloud band loops seamlessly | tile-edge clipping showed as a hard rectangle in the sky |
 | predicted resting point within 1px | the trajectory cheat must not drift from the real shot |
+| stars >=60 near-white px | a coreless gradient made "bigger" stars no brighter |
+| flag ripples, pole sways, bird flies | wind and birds are meant to be seen |
 | no page or console errors | catches the silent ones |
 
 Two rules learned the hard way:
@@ -156,6 +158,9 @@ offset twinkle periods, and a slow drift and glow on the disc.
   that shift by 4/255 or more over five seconds — is the number that matters. The
   first version scored **0.2%** and was invisible; it is now **28%**. Anything
   under a few percent will not read as motion.
+- **A gradient that starts fading at 0% has no opaque core**, so a star renders as
+  one antialiased point however large its radius. Stars carry an explicit
+  `0 55%` solid stop; without it, making them bigger changes nothing.
 - Every blob must fit inside its tile, or the tile edge shows as a hard vertical
   line. Blobs that cross an edge are repeated a full tile over so their halves
   meet. A bare-gradient control jumps 1/255 between neighbouring pixels; with

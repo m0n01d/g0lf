@@ -44,7 +44,8 @@ body {
    (expensive) — the softness comes from the gradients themselves. */
 
 .stars,
-.clouds {
+.clouds,
+.bird {
   position: absolute;
   pointer-events: none;
 }
@@ -55,45 +56,60 @@ body {
   top: 0;
   height: 72%;
   /* Fade the field out before the horizon so stars never sit on the dunes. */
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 88%);
-  mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 88%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 46%, transparent 90%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 46%, transparent 90%);
 }
 .stars-a {
   background-image:
-    radial-gradient(1.4px 1.4px at 8% 14%, rgba(255, 246, 230, 0.9), transparent 60%),
-    radial-gradient(1.2px 1.2px at 21% 31%, rgba(255, 246, 230, 0.75), transparent 60%),
-    radial-gradient(1.6px 1.6px at 34% 9%, rgba(255, 246, 230, 0.85), transparent 60%),
-    radial-gradient(1.1px 1.1px at 47% 26%, rgba(255, 246, 230, 0.7), transparent 60%),
-    radial-gradient(1.5px 1.5px at 61% 16%, rgba(255, 246, 230, 0.8), transparent 60%),
-    radial-gradient(1.2px 1.2px at 73% 34%, rgba(255, 246, 230, 0.7), transparent 60%),
-    radial-gradient(1.7px 1.7px at 88% 12%, rgba(255, 246, 230, 0.9), transparent 60%),
-    radial-gradient(1.2px 1.2px at 95% 28%, rgba(255, 246, 230, 0.65), transparent 60%);
-  animation: twinkle-a 5.5s ease-in-out infinite alternate;
+    radial-gradient(4.2px 4.2px at 8% 14%, rgba(255, 250, 240, 1) 0 55%, transparent 88%),
+    radial-gradient(3.3px 3.3px at 21% 31%, rgba(255, 248, 236, 0.95) 0 55%, transparent 88%),
+    radial-gradient(3.5px 3.5px at 34% 9%, rgba(255, 250, 240, 1) 0 55%, transparent 88%),
+    radial-gradient(2.6px 2.6px at 47% 26%, rgba(255, 246, 230, 0.9) 0 55%, transparent 88%),
+    radial-gradient(2.7px 2.7px at 61% 16%, rgba(255, 250, 240, 1) 0 55%, transparent 88%),
+    radial-gradient(4.4px 4.4px at 73% 34%, rgba(255, 246, 230, 0.9) 0 55%, transparent 88%),
+    radial-gradient(3.7px 3.7px at 88% 12%, rgba(255, 252, 245, 1) 0 55%, transparent 88%),
+    radial-gradient(2.1px 2.1px at 95% 28%, rgba(255, 246, 230, 0.88) 0 55%, transparent 88%);
+  animation: twinkle-a 3.2s ease-in-out infinite alternate;
 }
 .stars-b {
   background-image:
-    radial-gradient(1.1px 1.1px at 14% 40%, rgba(255, 240, 220, 0.6), transparent 60%),
-    radial-gradient(1.3px 1.3px at 28% 20%, rgba(255, 240, 220, 0.7), transparent 60%),
-    radial-gradient(1px 1px at 41% 38%, rgba(255, 240, 220, 0.55), transparent 60%),
-    radial-gradient(1.4px 1.4px at 55% 7%, rgba(255, 240, 220, 0.75), transparent 60%),
-    radial-gradient(1px 1px at 67% 24%, rgba(255, 240, 220, 0.5), transparent 60%),
-    radial-gradient(1.3px 1.3px at 80% 41%, rgba(255, 240, 220, 0.65), transparent 60%),
-    radial-gradient(1.1px 1.1px at 92% 19%, rgba(255, 240, 220, 0.6), transparent 60%);
+    radial-gradient(2px 2px at 14% 40%, rgba(255, 244, 226, 0.85) 0 55%, transparent 88%),
+    radial-gradient(3px 3px at 28% 20%, rgba(255, 246, 230, 0.95) 0 55%, transparent 88%),
+    radial-gradient(3.1px 3.1px at 41% 38%, rgba(255, 242, 222, 0.8) 0 55%, transparent 88%),
+    radial-gradient(2.8px 2.8px at 55% 7%, rgba(255, 250, 240, 1) 0 55%, transparent 88%),
+    radial-gradient(1.9px 1.9px at 67% 24%, rgba(255, 242, 222, 0.78) 0 55%, transparent 88%),
+    radial-gradient(2.5px 2.5px at 80% 41%, rgba(255, 246, 230, 0.92) 0 55%, transparent 88%),
+    radial-gradient(2.1px 2.1px at 92% 19%, rgba(255, 244, 226, 0.85) 0 55%, transparent 88%);
   /* Offset period so the two layers never pulse in unison. */
-  animation: twinkle-b 7.5s ease-in-out infinite alternate;
+  animation: twinkle-b 4.4s ease-in-out infinite alternate;
+}
+/* A few genuinely bright ones, so the field has some hierarchy. */
+.stars-c {
+  background-image:
+    radial-gradient(4.6px 4.6px at 17% 22%, rgba(255, 255, 252, 1) 0 55%, transparent 88%),
+    radial-gradient(3.4px 3.4px at 52% 15%, rgba(255, 253, 246, 1) 0 55%, transparent 88%),
+    radial-gradient(4.8px 4.8px at 76% 27%, rgba(255, 255, 252, 1) 0 55%, transparent 88%),
+    radial-gradient(3.2px 3.2px at 38% 34%, rgba(255, 252, 244, 0.95) 0 55%, transparent 88%);
+  animation: twinkle-c 2.4s ease-in-out infinite alternate;
 }
 
 @keyframes twinkle-a {
-  from { opacity: 0.18; }
-  to { opacity: 0.95; }
+  from { opacity: 0.25; }
+  to { opacity: 1; }
 }
 @keyframes twinkle-b {
-  from { opacity: 0.9; }
-  to { opacity: 0.15; }
+  from { opacity: 1; }
+  to { opacity: 0.22; }
+}
+@keyframes twinkle-c {
+  from { opacity: 0.45; }
+  to { opacity: 1; }
 }
 
 /* The band is twice the viewport wide and the pattern tiles every half of it,
-   so translating exactly -50% lands one whole tile over: the loop has no seam. */
+   so translating exactly -50% lands one whole tile over: the loop has no seam.
+   Any blob crossing a tile edge is repeated a tile over so its halves meet —
+   otherwise the edge shows as a hard vertical line. */
 .clouds {
   left: 0;
   top: 0;
@@ -114,34 +130,93 @@ body {
 
 .clouds-far {
   background-image:
-    /* 18% - 30% crosses the left edge, so it is repeated at 118%. */
     radial-gradient(30% 24% at 18% 60%, rgba(255, 226, 198, 0.2), transparent 72%),
     radial-gradient(30% 24% at 118% 60%, rgba(255, 226, 198, 0.2), transparent 72%),
     radial-gradient(22% 18% at 44% 44%, rgba(255, 220, 195, 0.16), transparent 72%),
-    /* 78% + 34% crosses the right edge, so it is repeated at -22%. */
     radial-gradient(34% 26% at 78% 66%, rgba(255, 230, 205, 0.15), transparent 72%),
     radial-gradient(34% 26% at -22% 66%, rgba(255, 230, 205, 0.15), transparent 72%);
-  animation-duration: 150s;
+  animation-duration: 88s;
 }
 .clouds-mid {
   background-image:
     radial-gradient(26% 16% at 30% 74%, rgba(255, 212, 178, 0.26), transparent 70%),
     radial-gradient(32% 19% at 66% 62%, rgba(255, 205, 172, 0.21), transparent 70%),
-    /* 8% - 18% crosses the left edge, so it is repeated at 108%. */
     radial-gradient(18% 12% at 8% 56%, rgba(255, 216, 184, 0.17), transparent 70%),
     radial-gradient(18% 12% at 108% 56%, rgba(255, 216, 184, 0.17), transparent 70%);
-  animation-duration: 95s;
+  animation-duration: 56s;
 }
 .clouds-near {
   background-image:
-    /* 12% - 36% crosses the left edge, so it is repeated at 112%. */
     radial-gradient(36% 14% at 12% 84%, rgba(255, 198, 158, 0.3), transparent 68%),
     radial-gradient(36% 14% at 112% 84%, rgba(255, 198, 158, 0.3), transparent 68%),
     radial-gradient(28% 12% at 55% 90%, rgba(255, 192, 152, 0.25), transparent 68%),
-    /* 88% + 32% crosses the right edge, so it is repeated at -12%. */
     radial-gradient(32% 13% at 88% 78%, rgba(255, 200, 162, 0.22), transparent 68%),
     radial-gradient(32% 13% at -12% 78%, rgba(255, 200, 162, 0.22), transparent 68%);
-  animation-duration: 62s;
+  animation-duration: 36s;
+}
+
+/* ------------------------------------------------------------------ birds */
+
+/* Two wings hinged at the body. They cross the sky for part of a long cycle and
+   sit off-screen the rest, so a bird is an occasional event rather than decor. */
+.bird {
+  left: 0;
+  width: 18px;
+  height: 11px;
+  opacity: 0;
+  will-change: transform;
+}
+.bird i {
+  position: absolute;
+  top: 3px;
+  width: 9px;
+  height: 7px;
+  border-top: 2px solid rgba(255, 240, 222, 0.85);
+  border-radius: 62% 62% 0 0 / 100% 100% 0 0;
+}
+.bird .l {
+  left: 0;
+  transform-origin: 100% 100%;
+  animation: flap-l 0.42s ease-in-out infinite alternate;
+}
+.bird .r {
+  right: 0;
+  transform-origin: 0 100%;
+  animation: flap-r 0.42s ease-in-out infinite alternate;
+}
+.bird-1 {
+  top: 22%;
+  animation: bird-fly-1 54s linear infinite;
+}
+.bird-2 {
+  top: 31%;
+  transform: scale(0.72);
+  animation: bird-fly-2 71s linear infinite;
+  animation-delay: -26s;
+}
+
+@keyframes flap-l {
+  from { transform: rotate(26deg); }
+  to { transform: rotate(-22deg); }
+}
+@keyframes flap-r {
+  from { transform: rotate(-26deg); }
+  to { transform: rotate(22deg); }
+}
+/* On screen for roughly a third of the cycle, drifting slightly downward. */
+@keyframes bird-fly-1 {
+  0% { transform: translate3d(-8vw, 0, 0); opacity: 0; }
+  3% { opacity: 0.9; }
+  30% { opacity: 0.9; }
+  35% { transform: translate3d(106vw, 26px, 0); opacity: 0; }
+  100% { transform: translate3d(106vw, 26px, 0); opacity: 0; }
+}
+@keyframes bird-fly-2 {
+  0% { transform: translate3d(106vw, 0, 0) scale(0.72); opacity: 0; }
+  4% { opacity: 0.75; }
+  28% { opacity: 0.75; }
+  33% { transform: translate3d(-8vw, -18px, 0) scale(0.72); opacity: 0; }
+  100% { transform: translate3d(-8vw, -18px, 0) scale(0.72); opacity: 0; }
 }
 
 /* ---------------------------------------------------------------- stage */
@@ -261,6 +336,8 @@ body {
   height: 52px;
   background: linear-gradient(to bottom, #fdf0dc, #c9a887);
   border-radius: 1px;
+  transform-origin: 50% 100%;
+  animation: pole-sway 2.7s ease-in-out infinite alternate;
 }
 .flag .pennant {
   position: absolute;
@@ -271,17 +348,23 @@ body {
   background: var(--flag);
   clip-path: polygon(0 0, 100% 50%, 0 100%);
   transform-origin: 0 50%;
-  animation: flag-wave 2.6s ease-in-out infinite;
+  animation: flag-wave 1.9s ease-in-out infinite;
 }
 
+/* Irregular stops so it reads as gusting wind rather than a metronome. */
 @keyframes flag-wave {
-  0%,
-  100% {
-    transform: skewY(0deg) scaleX(1);
-  }
-  50% {
-    transform: skewY(-4deg) scaleX(0.92);
-  }
+  0% { transform: skewY(0deg) scaleX(1); }
+  14% { transform: skewY(-9deg) scaleX(0.88); }
+  29% { transform: skewY(4deg) scaleX(0.97); }
+  46% { transform: skewY(-12deg) scaleX(0.82); }
+  63% { transform: skewY(2deg) scaleX(1); }
+  81% { transform: skewY(-6deg) scaleX(0.91); }
+  100% { transform: skewY(0deg) scaleX(1); }
+}
+
+@keyframes pole-sway {
+  from { transform: rotate(-0.9deg); }
+  to { transform: rotate(0.9deg); }
 }
 
 /* ---------------------------------------------------------------- ball */
@@ -508,9 +591,15 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .flag .pennant,
+  .flag .pole,
   .sun,
   .stars,
-  .clouds {
+  .clouds,
+  .bird,
+  .bird i {
     animation: none;
+  }
+  .bird {
+    display: none;
   }
 }
