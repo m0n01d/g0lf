@@ -337,7 +337,7 @@ body {
   background: linear-gradient(to bottom, #fdf0dc, #c9a887);
   border-radius: 1px;
   transform-origin: 50% 100%;
-  animation: pole-sway 2.7s ease-in-out infinite alternate;
+  animation: pole-sway calc(3.4s - var(--wind, 0) * 1.9s) ease-in-out infinite alternate;
 }
 .flag .pennant {
   position: absolute;
@@ -348,7 +348,13 @@ body {
   background: var(--flag);
   clip-path: polygon(0 0, 100% 50%, 0 100%);
   transform-origin: 0 50%;
-  animation: flag-wave 1.9s ease-in-out infinite;
+  /* The flag is the wind gauge: it hangs limp when calm, streams out flat when
+     it is blowing, flips to point downwind, and ripples faster the harder it
+     blows. `rotate` and `scale` are independent properties, so they compose
+     with the wave animation's `transform` instead of fighting it. */
+  rotate: calc((1 - var(--wind, 0)) * 40deg);
+  scale: var(--wind-dir, 1) 1;
+  animation: flag-wave calc(2.7s - var(--wind, 0) * 1.85s) ease-in-out infinite;
 }
 
 /* Irregular stops so it reads as gusting wind rather than a metronome. */
@@ -487,6 +493,54 @@ body {
   background: color-mix(in oklab, var(--flag), transparent 55%);
 }
 
+
+/* ------------------------------------------------------------------ sand */
+
+/* Only shows up when it is really blowing: the opacity clamp is zero below
+   about 40% wind, so calm holes have no particles at all rather than a few
+   sad ones. The whole field is mirrored to blow downwind. */
+.sand {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  scale: var(--wind-dir, 1) 1;
+  opacity: clamp(0, calc((var(--wind, 0) - 0.42) * 2.6), 0.9);
+  transition: opacity 1.4s ease;
+}
+.sand i {
+  position: absolute;
+  width: 3px;
+  height: 2px;
+  border-radius: 50%;
+  background: rgba(255, 214, 172, 0.9);
+  animation-name: blow;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-duration: calc(4.2s - var(--wind, 0) * 2.2s);
+}
+
+@keyframes blow {
+  0% { transform: translate3d(-10vw, 0, 0); opacity: 0; }
+  10% { opacity: 1; }
+  82% { opacity: 0.8; }
+  100% { transform: translate3d(112vw, -22px, 0); opacity: 0; }
+}
+.sand i:nth-child(1) { top: 89%; animation-delay: -0.61s; width: 4.1px; }
+.sand i:nth-child(2) { top: 82%; animation-delay: -1.22s; width: 4.9px; }
+.sand i:nth-child(3) { top: 75%; animation-delay: -1.83s; width: 3.6px; }
+.sand i:nth-child(4) { top: 68%; animation-delay: -2.44s; width: 4.4px; }
+.sand i:nth-child(5) { top: 61%; animation-delay: -3.05s; width: 5.1px; }
+.sand i:nth-child(6) { top: 54%; animation-delay: -3.66s; width: 3.8px; }
+.sand i:nth-child(7) { top: 91%; animation-delay: -0.07s; width: 4.6px; }
+.sand i:nth-child(8) { top: 84%; animation-delay: -0.68s; width: 5.3px; }
+.sand i:nth-child(9) { top: 77%; animation-delay: -1.29s; width: 4.1px; }
+.sand i:nth-child(10) { top: 70%; animation-delay: -1.9s; width: 4.8px; }
+.sand i:nth-child(11) { top: 63%; animation-delay: -2.51s; width: 3.5px; }
+.sand i:nth-child(12) { top: 56%; animation-delay: -3.12s; width: 4.3px; }
+.sand i:nth-child(13) { top: 93%; animation-delay: -3.73s; width: 5.0px; }
+.sand i:nth-child(14) { top: 86%; animation-delay: -0.14s; width: 3.8px; }
+
 /* ---------------------------------------------------------------- hud */
 
 .hud {
@@ -596,8 +650,12 @@ body {
   .stars,
   .clouds,
   .bird,
-  .bird i {
+  .bird i,
+  .sand i {
     animation: none;
+  }
+  .sand {
+    display: none;
   }
   .bird {
     display: none;

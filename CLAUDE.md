@@ -174,6 +174,36 @@ cannot leave it and the capture bought nothing. `update` now also accepts a
 `PointerDown` while already `Aiming`, so a missed `pointerup` starts a new aim
 rather than locking the game.
 
+## Wind
+
+**This is the first real departure from Desert Golf.** Every hole has a steady
+horizontal wind, seeded from the hole number like everything else, so hole N
+always blows the same way and nothing new goes in the save.
+
+- **Constant wind is free in the CSS encoding.** `cubic-bezier(1/3, b/3, 2/3, (1+b)/3)`
+  was derived for *any* constant acceleration; X was only ever `linear` because there
+  was no horizontal force. `Css.res` needed no change at all, and flight X still
+  matches the true parabola to **0.56px** across 2459 segments with wind on.
+- **Air only.** On the ground wind would have to fight static friction, and any wind
+  that won means a ball that never comes to rest — the failure that once produced
+  10,143 stops and 3.6MB of CSS for one shot.
+- **X is no longer monotonic**, so `Physics` cuts a segment when `vx` reverses in
+  flight, not just while rolling. Without that cut, `b = v0*T/(p1-p0)` runs away as a
+  segment's net displacement approaches zero and `Css.bezier`'s clamp silently
+  substitutes a wrong curve.
+- Strength scales with `Terrain.difficulty` and squares a random gust, so the opening
+  holes are dead calm and a really windy hole is rare: over 200 holes the median is
+  63 of 330, and 26% are above half strength.
+- The wind draw happens **last** in `generate`, so adding it left all 60 sampled
+  courses byte-identical.
+- Verified: still no unfinishable hole, and wind tightened the one-shot target window
+  from 104/47/44 to **86/34/36** aims across holes 1-10 / 11-25 / 26-60.
+
+There is no numeric readout. The flag is the gauge — limp when calm, streaming flat
+downwind when it blows, rippling faster with strength — and sand blows across the
+course above about 40% wind. `View` publishes `--wind` and `--wind-dir` on the stage
+and the CSS reads them, so nothing has to poke at individual elements.
+
 ## Keeping score
 
 The run persists to `localStorage` under `g0lf.run.v1`, so closing the app and reopening resumes

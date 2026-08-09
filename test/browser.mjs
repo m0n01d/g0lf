@@ -339,11 +339,62 @@ console.log(`\nchecking ${baseUrl}\n`)
   await p.context().close()
 }
 
+// -------------------------------------------------------- 6c. wind
+// Wind is a hole property: the flag is the only gauge and sand only appears
+// when it is really blowing, so both have to actually respond.
+{
+  const resumeAt = async (hole) => {
+    const p = await newPage()
+    await p.evaluate(h => localStorage.setItem("g0lf.run.v1", `1|${h}|20|0|1|1|0`), hole)
+    await p.reload({ waitUntil: "networkidle" })
+    await p.waitForTimeout(400)
+    return p
+  }
+  const read = p => p.evaluate(() => {
+    const st = getComputedStyle(document.getElementById("stage"))
+    const pen = getComputedStyle(document.querySelector(".flag .pennant"))
+    return {
+      wind: parseFloat(st.getPropertyValue("--wind")),
+      dir: st.getPropertyValue("--wind-dir").trim(),
+      rotate: pen.rotate, scale: pen.scale,
+      ripple: parseFloat(pen.animationDuration),
+      sand: parseFloat(getComputedStyle(document.querySelector(".sand")).opacity),
+    }
+  })
+
+  const calm = await resumeAt(1)          // hole 1 has no wind at all
+  const c = await read(calm)
+  ok("a calm hole reports no wind", c.wind === 0, JSON.stringify(c))
+  ok("the flag hangs limp when calm", parseFloat(c.rotate) > 30, c.rotate)
+  ok("no sand on a calm hole", c.sand === 0, "opacity=" + c.sand)
+  await calm.context().close()
+
+  const windy = await resumeAt(50)        // hole 50 blows at ~96% of max
+  const w = await read(windy)
+  ok("a windy hole reports strong wind", w.wind > 0.8, JSON.stringify(w))
+  ok("the flag streams out flat when windy", parseFloat(w.rotate) < 10, w.rotate)
+  ok("the flag ripples faster when windy", w.ripple < c.ripple, `${w.ripple}s vs ${c.ripple}s`)
+  ok("sand blows on a windy hole", w.sand > 0.5, "opacity=" + w.sand)
+  await windy.context().close()
+
+  // and a headwind must point the flag the other way
+  let flipped = null
+  for (const h of [10, 20, 24, 30, 33]) {
+    const p = await resumeAt(h)
+    const r = await read(p)
+    if (r.dir === "-1" && r.wind > 0.15) flipped = r
+    await p.context().close()
+    if (flipped) break
+  }
+  ok("a headwind flips the flag to point downwind",
+    flipped !== null && flipped.scale.startsWith("-1"), JSON.stringify(flipped))
+}
+
 // ------------------------------------------------- 7. reduced motion
 {
   const p = await newPage({ reducedMotion: "reduce" })
   const n = await p.evaluate(() => document.getAnimations()
-    .map(a => a.animationName).filter(x => /drift|twinkle|disc|flag|pole|bird|flap/.test(x)).length)
+    .map(a => a.animationName).filter(x => /drift|twinkle|disc|flag|pole|bird|flap|blow/.test(x)).length)
   ok("prefers-reduced-motion silences the ambient sky", n === 0, "still running: " + n)
   await p.context().close()
 }

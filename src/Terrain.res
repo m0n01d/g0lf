@@ -12,9 +12,17 @@ type t = {
   teeY: float,
   holeX: float,
   holeY: float,
+  // Steady horizontal wind for this hole, in world units/s^2, signed. Seeded
+  // from the hole number like everything else, so hole N always blows the same
+  // way. Constant, which is what keeps the CSS encoding exact: the cubic-bezier
+  // derivation covers any constant acceleration, it just happened to be zero.
+  wind: float,
 }
 
 let cupR = 14.0
+
+/** Strongest wind any hole can have, in world units/s^2 (~0.22 g). */
+let windMax = 330.0
 
 /**
 The course is generated in a fixed virtual space and scaled to the viewport at
@@ -274,7 +282,15 @@ let generate = (~hole) => {
   limitSlope(ys, ~step, ~maxSlope=1.3)
   pads()
 
-  let t = {step, ys, width, height, teeX, teeY: 0.0, holeX, holeY: 0.0}
+  // Drawn last on purpose: every earlier draw keeps its value, so adding wind
+  // left all existing courses byte-identical. Squaring the gust makes a really
+  // windy hole rare rather than routine, and it scales with difficulty, so the
+  // opening holes are dead calm.
+  let dir = Rand.float(r) < 0.5 ? -1.0 : 1.0
+  let gust = Rand.float(r)
+  let wind = dir *. windMax *. d *. gust *. gust
+
+  let t = {step, ys, width, height, teeX, teeY: 0.0, holeX, holeY: 0.0, wind}
   {...t, teeY: heightAt(t, teeX), holeY: heightAt(t, holeX)}
 }
 

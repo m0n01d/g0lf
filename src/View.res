@@ -205,6 +205,14 @@ let sync = (model: model) => {
 
   if needsRedraw(prev, model) {
     drawCourse(model)
+    // Wind is a property of the hole. Publishing it as two custom properties
+    // lets the flag and the blowing sand read it declaratively, instead of the
+    // view reaching into every element that cares.
+    stage->Web.set(
+      "--wind",
+      Float.toFixed(Math.abs(model.course.wind) /. Terrain.windMax, ~digits=3),
+    )
+    stage->Web.set("--wind-dir", model.course.wind >= 0.0 ? "1" : "-1")
   }
 
   // The one write that must be conditional: starting a shot.

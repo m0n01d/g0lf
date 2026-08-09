@@ -88,12 +88,23 @@ let simulate = (terrain: Terrain.t, ~x0, ~y0, ~vx0, ~vy0) => {
       let xPrev = x.contents
       let yPrev = y.contents
       vy := vy.contents -. gravity *. dt
-      let xNext = xPrev +. vx.contents *. dt
+      // Wind: a constant horizontal acceleration, and only while airborne. On
+      // the ground it would have to fight static friction, and any wind that
+      // won would mean a ball that never comes to rest.
+      vx := vx.contents +. terrain.wind *. dt
       // Trapezoidal in velocity, which is exact under constant acceleration.
+      let xNext = xPrev +. (vxPrev +. vx.contents) *. 0.5 *. dt
       let yNext = yPrev +. (vyPrev +. vy.contents) *. 0.5 *. dt
 
       // Apex: y reverses, so the segment must be split here to stay monotonic.
       if vyPrev > 0.0 && vy.contents <= 0.0 {
+        cut := true
+      }
+      // With wind, x is no longer monotonic either — a headwind can turn the
+      // ball around in mid-air. Without this cut, b = v0*T/(p1-p0) runs away as
+      // the segment's net displacement approaches zero, and the clamp in
+      // Css.bezier quietly replaces the real curve with a wrong one.
+      if sign(vx.contents) != sign(vxPrev) {
         cut := true
       }
 
@@ -120,6 +131,7 @@ let simulate = (terrain: Terrain.t, ~x0, ~y0, ~vx0, ~vy0) => {
         x := xPrev +. (xNext -. xPrev) *. hi.contents
         y := Terrain.heightAt(terrain, x.contents) +. ballR
         vy := vyPrev -. gravity *. dt *. hi.contents
+        vx := vxPrev +. terrain.wind *. dt *. hi.contents
 
         let s = Terrain.slopeAt(terrain, x.contents)
         let len = Math.sqrt(1.0 +. s *. s)
