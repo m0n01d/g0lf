@@ -51,10 +51,13 @@ let toWorld = (e: Web.pointerEvent) => {
 let init = () => {
   View.sync(model.contents)
 
-  stage->Web.onPointer("pointerdown", e => {
-    stage->Web.setPointerCapture(e.pointerId)
-    dispatch(PointerDown(toWorld(e)))
-  })
+  // No setPointerCapture. #stage is position:fixed inset:0, so the pointer
+  // cannot leave it anyway — and capturing made Chromium fire pointercancel
+  // instead of pointerup on every gesture after the first, as soon as any
+  // element was painted beneath #world. A capture we do not need is not worth
+  // that. If a pointerup is ever missed, PointerDown restarts the aim rather
+  // than the game soft-locking in Aiming.
+  stage->Web.onPointer("pointerdown", e => dispatch(PointerDown(toWorld(e))))
   stage->Web.onPointer("pointermove", e => dispatch(PointerMoved(toWorld(e))))
   stage->Web.onPointer("pointerup", e => {
     dispatch(PointerMoved(toWorld(e)))

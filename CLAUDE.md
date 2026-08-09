@@ -103,6 +103,28 @@ narrows by well over half while never closing.
 `preview.html` renders a grid of holes for eyeballing the curve; it is dev-only and is not part of
 the production build.
 
+## The sky
+
+Ambient motion is pure CSS on elements the view never touches, so it can never
+collide with a shot's keyframes: three parallax cloud bands, two star layers on
+offset twinkle periods, and a slow drift and glow on the disc.
+
+- Only `transform` and `opacity` are animated, so it all stays on the compositor.
+  No animated `background-position` (paint-bound) and no animated `filter`
+  (expensive) — softness comes from the gradients themselves.
+- Each cloud band is twice the viewport wide with the pattern tiling every half
+  of it, so a `-50%` translate lands exactly one tile over. Verified rather than
+  eyeballed: each band renders **pixel-identically** at `t=0` and `t=duration`.
+- All of it is silenced under `prefers-reduced-motion`.
+
+**`setPointerCapture` had to go to make this work.** With any element painted
+inside `#stage` beneath `#world`, Chromium started firing `pointercancel`
+instead of `pointerup` on every gesture after the first, so only the first shot
+of a session ever fired. `#stage` is `position: fixed; inset: 0`, so the pointer
+cannot leave it and the capture bought nothing. `update` now also accepts a
+`PointerDown` while already `Aiming`, so a missed `pointerup` starts a new aim
+rather than locking the game.
+
 ## Keeping score
 
 The run persists to `localStorage` under `g0lf.run.v1`, so closing the app and reopening resumes
@@ -171,7 +193,7 @@ and piles them into a blob wherever the ball is slow.
 ## Architecture (TEA)
 
 Model / Msg / update / view, with effects described as `cmd` values and interpreted by `Game.res`.
-`update` is pure — `npm test` runs 70 assertions against it in plain Node with no DOM, covering the
+`update` is pure — `npm test` runs 75 assertions against it in plain Node with no DOM, covering the
 stroke cycle, hole progression, phase guards, the resize invariants, and the whole scoring and
 save-format surface.
 

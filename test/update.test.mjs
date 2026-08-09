@@ -221,5 +221,23 @@ ok("a disarmed reset does not wipe", step(resumed, ResetDisarmed).m.run.hole ===
   ok("a reset redraws", M.needsRedraw(next2, wiped2) === true)
 }
 
+
+// --- no soft-lock without pointer capture -------------------------------------
+// setPointerCapture was removed (it made Chromium fire pointercancel instead of
+// pointerup once anything painted beneath #world). A missed pointerup must
+// therefore never leave the game stuck in Aiming.
+{
+  let g = M.init(0.9, S.empty)
+  const aiming = step(g, PointerDown({ x: 300, y: 300 })).m
+  ok("a drag starts an aim", phase(aiming) === "Aiming")
+  const reAimed = step(aiming, PointerDown({ x: 500, y: 400 })).m
+  ok("pressing again while aiming restarts the aim, never locks",
+    phase(reAimed) === "Aiming" && reAimed.phase._0.from.x === 500)
+  ok("restarting an aim costs no stroke", reAimed.strokes === 0)
+  const afterCancel = step(aiming, PointerCancelled).m
+  ok("a cancelled gesture returns to Ready", phase(afterCancel) === "Ready")
+  ok("and can immediately aim again", phase(step(afterCancel, PointerDown({ x: 1, y: 1 })).m) === "Aiming")
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

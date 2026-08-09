@@ -25,7 +25,6 @@ type animationEvent = {animationName: string}
 @send external onClick: (element, string, unit => unit) => unit = "addEventListener"
 @send external onAnimation: (element, string, animationEvent => unit) => unit = "addEventListener"
 @send external onResize: (window, string, unit => unit) => unit = "addEventListener"
-@send external setPointerCapture: (element, int) => unit = "setPointerCapture"
 
 @val external window: window = "window"
 @val external setTimeout: (unit => unit, int) => unit = "setTimeout"

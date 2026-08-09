@@ -23,6 +23,15 @@
          a single scale() maps it to the viewport. That is why hole N is the
          same course on every device. -->
     <div id="stage" class="stage">
+      <!-- Ambient sky. Purely decorative, purely CSS: no id, so the view never
+           touches it and it can never collide with a shot's keyframes. It sits
+           before #world so terrain and ball paint over it. -->
+      <div class="stars stars-a"></div>
+      <div class="stars stars-b"></div>
+      <div class="clouds clouds-far"></div>
+      <div class="clouds clouds-mid"></div>
+      <div class="clouds clouds-near"></div>
+
       <div id="world" class="world">
         <div class="sun"></div>
 

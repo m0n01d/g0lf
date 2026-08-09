@@ -107,7 +107,11 @@ let update = (model, msg) =>
     }
   | (ResetDisarmed, _) => ({...model, resetArmed: false}, NoCmd)
 
-  | (PointerDown(p), Ready) => ({...model, phase: Aiming({from: p, to_: p}), toast: None}, NoCmd)
+  // Accepted while already aiming too: without pointer capture a pointerup can
+  // in principle be missed, and this makes that a new aim rather than a lock.
+  | (PointerDown(p), Ready)
+  | (PointerDown(p), Aiming(_)) =>
+    ({...model, phase: Aiming({from: p, to_: p}), toast: None}, NoCmd)
   | (PointerMoved(p), Aiming({from})) => ({...model, phase: Aiming({from, to_: p})}, NoCmd)
   | (PointerUp, Aiming({from, to_})) => launch(model, from, to_)
   | (PointerCancelled, Aiming(_)) => ({...model, phase: Ready}, NoCmd)
