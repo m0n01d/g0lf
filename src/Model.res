@@ -91,3 +91,21 @@ let isWatching = m =>
   | Watching(_) => true
   | _ => false
   }
+
+/**
+Whether the terrain, cup and flag need re-drawing.
+
+Deliberately keyed on the course itself rather than on `run.hole`. Those two do
+not change together: sinking advances the hole counter while the old course is
+still on screen, and the new course arrives one message later on `AdvanceHole`.
+Keying on the counter drew the *previous* hole and then skipped the real change,
+leaving the DOM one hole behind.
+
+Identity is enough — `nextHole` always builds a fresh record — and it avoids a
+deep compare of the height array on every pointer move.
+*/
+let needsRedraw = (prev: option<model>, next: model) =>
+  switch prev {
+  | None => true
+  | Some(p) => p.course !== next.course
+  }

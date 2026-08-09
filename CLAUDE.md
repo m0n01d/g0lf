@@ -171,7 +171,7 @@ and piles them into a blob wherever the ball is slow.
 ## Architecture (TEA)
 
 Model / Msg / update / view, with effects described as `cmd` values and interpreted by `Game.res`.
-`update` is pure — `npm test` runs 62 assertions against it in plain Node with no DOM, covering the
+`update` is pure — `npm test` runs 70 assertions against it in plain Node with no DOM, covering the
 stroke cycle, hole progression, phase guards, the resize invariants, and the whole scoring and
 save-format surface.
 
@@ -180,6 +180,12 @@ Two things are worth knowing before editing `View.res`:
 - **The view diffs against the previous model, and that is correctness, not optimisation.**
   Re-assigning `animation` on the ball *restarts the shot*, so the view must not touch an animation
   property unless `shotId` actually changed.
+- **Diff on the thing that changed, not on a proxy for it.** The terrain redraw is keyed on
+  `Model.needsRedraw`, which compares the course by identity. It was once keyed on `run.hole`, which
+  looks equivalent and is not: sinking advances the hole counter while the old course is still on
+  screen, and the new course arrives one message later on `AdvanceHole`. That shipped a DOM stuck
+  one hole behind. Predicates like this live in `Model.res` rather than `View.res` so `npm test` can
+  cover them — `View.res` calls `Web.el` at module load and cannot be imported without a DOM.
 - **The ball's position during flight is deliberately not in the model.** The browser owns it while
   the keyframes play; the model only knows which shot is in flight. `animationend` is the only
   frame signal in the game, and it resolves to `shot.endX/endY`.

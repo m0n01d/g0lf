@@ -203,7 +203,7 @@ let sync = (model: model) => {
     world->Web.set("transform", `scale(${Float.toFixed(model.scale, ~digits=5)})`)
   }
 
-  if first || changed(m => m.run.hole) {
+  if needsRedraw(prev, model) {
     drawCourse(model)
   }
 

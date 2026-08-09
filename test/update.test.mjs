@@ -187,5 +187,39 @@ ok("wiping emits Forget",
   wiped.cmd.TAG === "Batch" && wiped.cmd._0.some(c => c === "Forget" || c.TAG === "Forget"))
 ok("a disarmed reset does not wipe", step(resumed, ResetDisarmed).m.run.hole === 12)
 
+
+// --- redraw keying ------------------------------------------------------------
+// Regression: the view used to key the terrain redraw on run.hole. Sinking
+// advances that counter while the old course is still on screen, and the new
+// course arrives one message later on AdvanceHole — so the DOM sat one hole
+// behind. The predicate lives in Model precisely so it can be checked here.
+{
+  let g = M.init(0.9, S.empty)
+  ok("first render always draws", M.needsRedraw(undefined, g) === true)
+  ok("an unchanged model does not redraw", M.needsRedraw(g, g) === false)
+
+  const moved = step(g, PointerDown({ x: 100, y: 100 })).m
+  ok("aiming does not redraw the terrain", M.needsRedraw(g, moved) === false)
+
+  const sol3 = findSink(g)
+  const sp3 = Math.hypot(sol3.vx, sol3.vy), ln3 = 190 * Math.min(1, sp3 / 1280)
+  let a1 = step(g, PointerDown({ x: g.ball.x, y: g.ball.y })).m
+  a1 = step(a1, PointerMoved({ x: g.ball.x - (sol3.vx / sp3) * ln3, y: g.ball.y - (sol3.vy / sp3) * ln3 })).m
+  const flying2 = step(a1, PointerUp).m
+  const sunk2 = step(flying2, ShotEnded).m
+  ok("sinking advances the hole counter but not the course",
+    sunk2.run.hole === 2 && sunk2.course === g.course)
+  ok("sinking must NOT redraw — the new course does not exist yet",
+    M.needsRedraw(flying2, sunk2) === false)
+
+  const next2 = step(sunk2, AdvanceHole).m
+  ok("AdvanceHole swaps the course", next2.course !== sunk2.course)
+  ok("AdvanceHole MUST redraw (this is the bug that shipped)",
+    M.needsRedraw(sunk2, next2) === true)
+
+  const wiped2 = step(step(next2, ResetPressed).m, ResetPressed).m
+  ok("a reset redraws", M.needsRedraw(next2, wiped2) === true)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
