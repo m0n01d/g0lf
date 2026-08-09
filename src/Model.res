@@ -96,6 +96,17 @@ let isShifting = m =>
   | _ => false
   }
 
+/**
+True while the browser owns where the ball is — during a shot, and during the
+hole change, when it is being thrown back to the next tee. The view must not
+write a static position in either case.
+*/
+let browserOwnsBall = m =>
+  switch m.phase {
+  | Watching(_) | Shifting => true
+  | _ => false
+  }
+
 let isWatching = m =>
   switch m.phase {
   | Watching(_) => true

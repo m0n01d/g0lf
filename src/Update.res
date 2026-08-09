@@ -80,11 +80,35 @@ let launch = (model, from, to_) => {
 
 let nextHole = model => {
   let course = Terrain.generate(~hole=model.run.hole)
+  let tee = teeOf(course)
+  let shotId = model.shotId + 1
+  // Throw the ball up out of the cup and back to the next tee. It rides the
+  // same keyframe machinery a shot does, so it is a real parabola and it is
+  // visible the whole way — the ball is painted under the terrain, so anything
+  // that slides it along the ground would travel underground.
+  let arc = Physics.hop(
+    course,
+    ~fromX=model.ball.x,
+    ~fromY=model.ball.y,
+    ~toX=tee.x,
+    ~toY=tee.y,
+    ~seconds=Int.toFloat(shiftMs) /. 1000.0 *. 0.92,
+  )
+  let program = Css.compile(arc, ~stageH=Terrain.worldH, ~id=shotId, ~spin0=model.spin)
   // The new course goes in immediately — the view transitions the clip-path
   // toward it rather than swapping — but the hole is not playable until the
   // dunes have finished moving.
   (
-    {...model, strokes: 0, course, ball: teeOf(course), phase: Shifting, program: None},
+    {
+      ...model,
+      strokes: 0,
+      course,
+      ball: tee,
+      phase: Shifting,
+      program: Some(program),
+      shotId,
+      spin: program.spinEnd,
+    },
     After(shiftMs, ShiftDone),
   )
 }

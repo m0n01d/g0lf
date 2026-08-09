@@ -72,15 +72,21 @@ has reached the user got past unit tests by being invisible to them.
 | predicted resting point within 1px | the trajectory cheat must not drift from the real shot |
 | stars >=60 near-white px | a coreless gradient made "bigger" stars no brighter |
 | flag ripples, pole sways, bird flies | wind and birds are meant to be seen |
+| ball is >=40 bright px mid-hop | sliding it to the next tee sent it *under* the terrain |
 | no page or console errors | catches the silent ones |
 
-Two rules learned the hard way:
+Three rules learned the hard way:
 
 - **Check the outcome, not the mechanism.** "The keyframes are in the CSS" and "the hash
   changed" are not evidence that anything looks right. Screenshot it, diff it, measure it.
 - **Prove a new regression test fails against the bug**, then fix it. A green test that
   never went red is worthless. Two of these were themselves broken when first written —
   one clipped the region it was meant to inspect, one reset the state it was meant to advance.
+- **Freeze the animations before measuring a moving thing.** `getBoundingClientRect` and
+  `page.screenshot` are two round-trips and a screenshot costs ~220ms, in which the ball
+  travels ~115px — so cropping the rect out of the frame lands on empty sky and reads as
+  "the ball is not there". `document.getAnimations().filter(a => a.playState === "running")`,
+  pause, measure, `play()`.
 
 It can also be pointed at a deployed URL:
 
@@ -179,8 +185,19 @@ rather than locking the game.
 Sinking does not cut to the next hole — the dunes **reshape into it**. Every course
 has the same number of polygon points (129 for the ground, 41 for the ridges),
 because `count` derives from a fixed world width and step, and that is the whole
-reason `clip-path` interpolates at all. Cup, flag, ball and shadow transition to
-their new places over the same beat, and the wind gets up while it happens.
+reason `clip-path` interpolates at all. Cup and flag transition to their new places
+over the same beat, and the wind gets up while it happens.
+
+**The ball is thrown, not moved.** `Physics.hop` solves a ballistic arc from the cup
+to the next tee in a fixed time and hands it to `Css.compile` like any other shot, so
+the ball launches out of the hole and lands at the tee. It is the same keyframe
+machinery, the same exact cubic-beziers — a hop is just a shot whose launch velocity
+was solved for a target instead of read off a drag.
+
+This replaced a CSS transition on the ball's `left`/`top`, which read as a teleport,
+and the reason is z-order: **the ball is painted beneath the terrain.** Sliding it
+across sent it underground, invisible for the whole journey, so it only ever appeared
+at the two ends. A launch clears the dunes and is visible the whole way.
 
 - Measured before committing to it: the morph holds a **steady 60fps** (median
   16.7ms, p95 17.0ms), slightly *steadier* than a plain transform pan, whose worst
@@ -194,7 +211,11 @@ their new places over the same beat, and the wind gets up while it happens.
   moving. `Update.shiftMs` must match `--shift` in the CSS.
 - The transition **durations live on the `.shifting` class**, never on the elements,
   so nothing can be transitioning `left`/`top` while a shot is in flight — a
-  permanent transition on the ball would smear every post-shot settle.
+  permanent transition on the cup would smear every hole change into the next one.
+- `Css.program` carries `originX`/`originY` because the view must anchor the ball at
+  the keyframes' own origin. For a shot that equals `model.ball`; for a hop it does
+  not — `nextHole` sets `model.ball` to the tee before the ball has travelled, so
+  anchoring on the model made the ball start at the destination, arc, and snap back.
 - `--surge` is set by the class and `--wind` inline, so they compose rather than one
   overriding the other. The sand's opacity ramp must stay **shorter** than the shift,
   or the surge never arrives before it starts decaying.

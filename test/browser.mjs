@@ -186,6 +186,38 @@ console.log(`\nchecking ${baseUrl}\n`)
     shifting: document.getElementById("stage").className.includes("shifting"),
     sand: parseFloat(getComputedStyle(document.querySelector(".sand")).opacity),
   }))
+  const ballBox = () => p.evaluate(() => {
+    const r = document.getElementById("ball").getBoundingClientRect()
+    return { y: Math.round(r.top + r.height / 2), x: Math.round(r.left + r.width / 2) }
+  })
+  // Where the ball is, and how many of its own pixels are actually painted there.
+  //
+  // "Visible" has to be checked by looking, not by comparing to the ground
+  // element's box — #ground is a full-size div with a clip-path, so its bounding
+  // rect is the element, not the dunes.
+  //
+  // The freeze is not decoration. The rect and the screenshot are two separate
+  // round-trips and a screenshot costs ~220ms, during which the ball travels
+  // ~115px — measured. Cropping the first rect out of the second frame lands on
+  // empty sky and reads as "the ball is not there".
+  const frozenBall = async () => {
+    const box = await p.evaluate(() => {
+      window.__held = document.getAnimations().filter(a => a.playState === "running")
+      window.__held.forEach(a => a.pause())
+      const r = document.getElementById("ball").getBoundingClientRect()
+      return { y: Math.round(r.top + r.height / 2), x: Math.round(r.left + r.width / 2) }
+    })
+    const clip = {
+      x: Math.max(0, box.x - 28), y: Math.max(0, box.y - 28),
+      width: 56, height: 56,
+    }
+    const png = PNG.sync.read(await p.screenshot({ clip }))
+    await p.evaluate(() => { window.__held.forEach(a => a.play()); window.__held = null })
+    let n = 0
+    for (let i = 0; i < png.data.length; i += 4)
+      if (png.data[i] > 200 && png.data[i + 1] > 195 && png.data[i + 2] > 180) n++
+    return { ...box, pixels: n }
+  }
   const calmSand = (await read()).sand
   ok("a hole can be sunk to start the shift", await aimUntilSinks(p))
 
@@ -194,7 +226,13 @@ console.log(`\nchecking ${baseUrl}\n`)
     () => document.getElementById("stage").className.includes("shifting"),
     null, { timeout: 20000 })
   const start = await read()
-  await p.waitForTimeout(620)   // past the 0.55s surge ramp, still inside the shift
+  const ballStart = await ballBox()
+  // Halfway through the shift the ball should be at the top of its arc, well
+  // above where it started and where it lands. Sliding it along the ground
+  // would leave it underneath the terrain and invisible the whole way.
+  await p.waitForTimeout(430)
+  const ballMid = await frozenBall()
+  await p.waitForTimeout(190)   // past the 0.55s surge ramp, still inside the shift
   const mid = await read()
   await p.waitForFunction(
     () => !document.getElementById("stage").className.includes("shifting"),
@@ -209,6 +247,14 @@ console.log(`\nchecking ${baseUrl}\n`)
   ok("the wind gets up while the desert rearranges",
     mid.sand > calmSand && mid.sand > end.sand,
     `calm ${calmSand} -> mid ${mid.sand} -> settled ${end.sand}`)
+  const ballEnd = await ballBox()
+  ok("the ball is thrown well above both ends of its journey, not slid",
+    ballMid.y < ballStart.y - 60 && ballMid.y < ballEnd.y - 60,
+    `start y=${ballStart.y}  mid y=${ballMid.y}  end y=${ballEnd.y}`)
+  ok("the ball is actually on screen mid-arc, not hidden under the terrain",
+    ballMid.pixels >= 40, `only ${ballMid.pixels} bright px where the ball should be`)
+  ok("the ball actually travels across to the new tee",
+    Math.abs(ballEnd.x - ballStart.x) > 80, `${ballStart.x} -> ${ballEnd.x}`)
   ok("the hole is playable again once the dunes stop",
     phaseAcceptsInput(await p.evaluate(() => document.getElementById("hudStrokes").textContent)))
   await p.context().close()

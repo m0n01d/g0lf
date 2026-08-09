@@ -310,3 +310,36 @@ let sample = (stops: array<stop>, time: float) => {
     }
   }
 }
+
+/**
+A ballistic arc from one point to another in a fixed time, ignoring terrain.
+
+Used to throw the ball out of the cup and back to the next tee, so changing hole
+reads as a launch rather than the ball blinking across the screen. Sliding it
+there with a CSS transition does not work: the ball is painted *beneath* the
+terrain, so it travels underground and only reappears on arrival.
+
+The launch velocity is solved exactly, and cutting at the apex keeps each half
+monotonic in y — which is all `Css.compile` needs to encode the whole thing as
+two exact cubic-beziers, the same as any other shot.
+*/
+let hop = (terrain: Terrain.t, ~fromX, ~fromY, ~toX, ~toY, ~seconds) => {
+  let span = Math.max(seconds, 0.05)
+  let vx = (toX -. fromX) /. span
+  let vy = (toY -. fromY +. 0.5 *. gravity *. span *. span) /. span
+  let at = time => {
+    let x = fromX +. vx *. time
+    {
+      t: time,
+      x,
+      y: fromY +. vy *. time -. 0.5 *. gravity *. time *. time,
+      vx,
+      vy: vy -. gravity *. time,
+      gy: Terrain.heightAt(terrain, x),
+      flying: true,
+    }
+  }
+  let apex = vy /. gravity
+  let stops = apex > 0.02 && apex < span -. 0.02 ? [at(0.0), at(apex), at(span)] : [at(0.0), at(span)]
+  {stops, duration: span, outcome: Rest, endX: toX, endY: toY}
+}

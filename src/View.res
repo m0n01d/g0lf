@@ -83,13 +83,15 @@ let placeBall = (model: model) => {
 }
 
 /** Hand the shot to the browser. From here it owns the ball until animationend. */
-let startShot = (model: model, program: Css.program) => {
+let startShot = (_model: model, program: Css.program) => {
   shotStyle->Web.setText(program.css)
-  // Keyframe offsets are relative to where the ball starts.
-  ballX->Web.set("left", Web.px(model.ball.x))
-  ballY->Web.set("top", Web.px(flip(model.ball.y)))
-  shadowX->Web.set("left", Web.px(model.ball.x))
-  shadow->Web.set("top", Web.px(flip(model.ball.y)))
+  // Anchor at the program's own origin. Using model.ball works for a shot and
+  // is wrong for the hole-change arc, where the model already holds the tee the
+  // ball is being thrown *to*.
+  ballX->Web.set("left", Web.px(program.originX))
+  ballY->Web.set("top", Web.px(program.originY))
+  shadowX->Web.set("left", Web.px(program.originX))
+  shadow->Web.set("top", Web.px(program.originY))
   let d = Float.toFixed(program.duration, ~digits=4)
   ballX->Web.restart(`${program.nameX} ${d}s linear forwards`)
   ballY->Web.restart(`${program.nameY} ${d}s linear forwards`)
@@ -222,7 +224,7 @@ let sync = (model: model) => {
   }
 
   // The one write that must be conditional: starting a shot.
-  let startedShot = changed(m => m.shotId) && isWatching(model)
+  let startedShot = changed(m => m.shotId) && browserOwnsBall(model)
   switch (startedShot, model.program) {
   | (true, Some(program)) => startShot(model, program)
   | _ => ()
@@ -230,12 +232,14 @@ let sync = (model: model) => {
 
   // Static placement, only when the ball is not under the browser's control and
   // something about its resting state actually moved.
-  let leftWatching =
+  let released =
     switch prev {
-    | Some(p) => isWatching(p) && !isWatching(model)
+    | Some(p) => browserOwnsBall(p) && !browserOwnsBall(model)
     | None => false
     }
-  if !isWatching(model) && (first || leftWatching || changed(m => m.ball) || changed(m => m.spin)) {
+  if
+    !browserOwnsBall(model) &&
+      (first || released || changed(m => m.ball) || changed(m => m.spin)) {
     placeBall(model)
   }
 

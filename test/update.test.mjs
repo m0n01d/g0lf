@@ -268,5 +268,41 @@ ok("a disarmed reset does not wipe", step(resumed, ResetDisarmed).m.run.hole ===
   ok("a stray ShiftDone while Ready is ignored", phase(step(done.m, ShiftDone).m) === "Ready")
 }
 
+
+// --- the ball is thrown to the next tee, not slid there ------------------------
+// It is painted beneath the terrain, so anything that moves it along the ground
+// travels underground and reads as a teleport. It gets a real arc instead.
+{
+  const t = T.generate(3)
+  const arc = P.hop(t, 400, 100, 120, 180, 0.92)
+  const last = arc.stops.at(-1)
+  ok("the arc starts where the ball is", Math.abs(arc.stops[0].x - 400) < 1e-9 && Math.abs(arc.stops[0].y - 100) < 1e-9)
+  ok("the arc lands exactly on the tee",
+    Math.abs(last.x - 120) < 1e-6 && Math.abs(last.y - 180) < 1e-6,
+    `${last.x.toFixed(3)},${last.y.toFixed(3)}`)
+  ok("the arc takes the time it was given", Math.abs(arc.duration - 0.92) < 1e-9)
+  ok("it is cut at the apex so each half is monotonic", arc.stops.length === 3)
+  const apex = arc.stops[1]
+  ok("the apex is above both ends", apex.y > 100 && apex.y > 180, `apex y=${apex.y.toFixed(0)}`)
+  ok("the apex is where vertical speed is zero", Math.abs(apex.vy) < 1e-9)
+  ok("it clears the terrain rather than travelling through it",
+    apex.y > Math.max(...t.ys), `apex ${apex.y.toFixed(0)} vs tallest dune ${Math.max(...t.ys).toFixed(0)}`)
+
+  // and the hole change actually uses it
+  let g = M.init(0.9, S.empty)
+  const sol = findSink(g)
+  const sp = Math.hypot(sol.vx, sol.vy), ln = 190 * Math.min(1, sp / 1280)
+  g = step(g, PointerDown({ x: g.ball.x, y: g.ball.y })).m
+  g = step(g, PointerMoved({ x: g.ball.x - (sol.vx / sp) * ln, y: g.ball.y - (sol.vy / sp) * ln })).m
+  const sunk = step(step(g, PointerUp).m, ShotEnded).m
+  const shifting = step(sunk, AdvanceHole).m
+  ok("changing hole compiles an arc for the ball", shifting.program !== undefined)
+  ok("changing hole advances shotId so the view plays it",
+    shifting.shotId === sunk.shotId + 1)
+  ok("the browser owns the ball during the shift", M.browserOwnsBall(shifting) === true)
+  ok("and hands it back when the shift ends",
+    M.browserOwnsBall(step(shifting, "ShiftDone").m) === false)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

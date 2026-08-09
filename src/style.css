@@ -529,21 +529,11 @@ body {
   transition-timing-function: var(--ease-shift);
 }
 .stage.shifting .cup,
-.stage.shifting .flag,
-.stage.shifting .shadow-x,
-.stage.shifting .ball-x {
+.stage.shifting .flag {
   transition-property: left, top;
   transition-duration: var(--shift);
   transition-timing-function: var(--ease-shift);
 }
-/* The ball lifts as it travels, so it arcs to the new tee instead of sliding. */
-.stage.shifting .ball-y,
-.stage.shifting .shadow {
-  transition-property: top;
-  transition-duration: var(--shift);
-  transition-timing-function: cubic-bezier(0.35, -0.35, 0.3, 1);
-}
-
 /* The wind gets up while the desert is rearranging itself. --surge is set by a
    class, and --wind is an inline custom property, so the two compose instead of
    one overriding the other. */
@@ -719,11 +709,7 @@ body {
   .stage.shifting .crust,
   .stage.shifting .ridge,
   .stage.shifting .cup,
-  .stage.shifting .flag,
-  .stage.shifting .ball-x,
-  .stage.shifting .ball-y,
-  .stage.shifting .shadow-x,
-  .stage.shifting .shadow {
+  .stage.shifting .flag {
     transition-duration: 0s;
   }
   .bird {

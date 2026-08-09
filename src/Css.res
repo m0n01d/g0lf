@@ -136,6 +136,11 @@ type program = {
   nameShadow: string,
   duration: float,
   spinEnd: float,
+  // Where the keyframes are measured from. The view must anchor the ball here,
+  // not at model.ball: for a shot the two are the same, but the hole-change arc
+  // sets model.ball to the destination before the ball has travelled.
+  originX: float,
+  originY: float,
 }
 
 // Degrees of ball rotation per px of horizontal travel. Slightly under the
@@ -222,5 +227,7 @@ let compile = (shot: Physics.shot, ~stageH, ~id, ~spin0) => {
     nameShadow,
     duration,
     spinEnd: spin0 +. (shot.endX -. originX) *. spinPerPx,
+    originX,
+    originY,
   }
 }
