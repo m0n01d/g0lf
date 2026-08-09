@@ -16,8 +16,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="g0lf" />
-    <script type="module" crossorigin src="/g0lf/assets/index-CvQh2vff.js"></script>
-    <link rel="stylesheet" crossorigin href="/g0lf/assets/index-B8mT7hsj.css">
+    <script type="module" crossorigin src="/g0lf/assets/index-DfFlPq65.js"></script>
+    <link rel="stylesheet" crossorigin href="/g0lf/assets/index-YVW6N9HT.css">
   <link rel="manifest" href="/g0lf/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/g0lf/registerSW.js"></script></head>
   <body>
     <!-- Everything inside #world is positioned in fixed 1000x600 world units;
@@ -38,7 +38,10 @@
       <div class="bird bird-2"><i class="l"></i><i class="r"></i></div>
 
       <div id="world" class="world">
-        <div class="sun"></div>
+        <!-- The disc is clipped to the sky so it sets *behind* the dunes. Both
+             ridge layers are translucent, so without this its lower half showed
+             straight through them as a ghost circle lying on the sand. -->
+        <div id="sunClip" class="sun-clip"><div class="sun"></div></div>
 
         <div id="far2" class="ridge ridge-far"></div>
         <div id="far1" class="ridge ridge-near"></div>
