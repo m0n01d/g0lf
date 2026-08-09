@@ -16,13 +16,22 @@ let scaleFor = () => {
   r.width /. Terrain.worldW
 }
 
-let model = ref(init(~scale=scaleFor()))
+// The saved run is read once, at boot. A missing or unreadable save just starts
+// a new run rather than failing.
+let restored = switch Web.read(Score.key) {
+| Some(raw) => Score.decode(raw)->Option.getOr(Score.empty)
+| None => Score.empty
+}
+
+let model = ref(init(~scale=scaleFor(), ~run=restored))
 
 let rec perform = cmd =>
   switch cmd {
   | NoCmd => ()
   | Batch(cs) => Array.forEach(cs, perform)
   | After(ms, msg) => Web.setTimeout(() => dispatch(msg), ms)
+  | Persist(run) => Web.write(Score.key, Score.encode(run))
+  | Forget => Web.forget(Score.key)
   }
 
 and dispatch = msg => {
@@ -57,6 +66,7 @@ let init = () => {
   View.ballX->Web.onAnimation("animationend", _ => dispatch(ShotEnded))
 
   View.cheatBtn->Web.onClick("click", () => dispatch(ToggledCheat))
+  View.resetBtn->Web.onClick("click", () => dispatch(ResetPressed))
 
   Web.window->Web.onResize("resize", () => dispatch(Rescaled(scaleFor())))
 }

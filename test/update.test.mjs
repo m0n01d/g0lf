@@ -4,6 +4,7 @@ import * as M from "../src/Model.res.mjs"
 import * as U from "../src/Update.res.mjs"
 import * as T from "../src/Terrain.res.mjs"
 import * as P from "../src/Physics.res.mjs"
+import * as S from "../src/Score.res.mjs"
 
 let pass = 0, fail = 0
 const ok = (name, cond, extra = "") => {
@@ -22,8 +23,8 @@ const AdvanceHole = "AdvanceHole", PointerCancelled = "PointerCancelled"
 const step = (m, msg) => { const [next, cmd] = U.update(m, msg); return { m: next, cmd } }
 
 // --- a full stroke ----------------------------------------------------------
-let m = M.init(0.9)
-ok("starts Ready on hole 1", phase(m) === "Ready" && m.hole === 1 && m.strokes === 0)
+let m = M.init(0.9, S.empty)
+ok("starts Ready on hole 1", phase(m) === "Ready" && m.run.hole === 1 && m.strokes === 0)
 
 let r = step(m, PointerDown({ x: m.ball.x, y: m.ball.y }))
 ok("pointer down starts aiming", phase(r.m) === "Aiming")
@@ -52,10 +53,10 @@ ok("pointer down during flight is ignored", ignored.m === flying || phase(ignore
 const strayEnd = step(m, ShotEnded)
 ok("stray ShotEnded while Ready is ignored", phase(strayEnd.m) === "Ready")
 const strayAdvance = step(m, AdvanceHole)
-ok("stray AdvanceHole while Ready is ignored", strayAdvance.m.hole === 1)
+ok("stray AdvanceHole while Ready is ignored", strayAdvance.m.run.hole === 1)
 
 // --- a weak drag does not burn a stroke -------------------------------------
-let w = step(M.init(0.9), PointerDown({ x: 100, y: 100 }))
+let w = step(M.init(0.9, S.empty), PointerDown({ x: 100, y: 100 }))
 w = step(w.m, PointerMoved({ x: 101, y: 100 }))
 w = step(w.m, PointerUp)
 ok("a tiny drag does not count a stroke", w.m.strokes === 0 && phase(w.m) === "Ready")
@@ -71,7 +72,7 @@ const findSink = (model) => {
     }
   return null
 }
-let g = M.init(0.9)
+let g = M.init(0.9, S.empty)
 const sol = findSink(g)
 ok("hole 1 is sinkable", sol !== null)
 // aimVector maps drag -> velocity; invert it to build the drag that produces `sol`.
@@ -85,20 +86,23 @@ ok("the holing drag reproduces a sinking shot", sunk.m.phase._0.outcome === "Sun
 const strokesAtSink = sunk.m.strokes
 sunk = step(sunk.m, ShotEnded)
 ok("sinking goes to Between", phase(sunk.m) === "Between")
-ok("sinking banks the strokes into total", sunk.m.total === strokesAtSink,
-  `total=${sunk.m.total} strokes=${strokesAtSink}`)
+ok("sinking banks the strokes into total", sunk.m.run.total === strokesAtSink,
+  `total=${sunk.m.run.total} strokes=${strokesAtSink}`)
 ok("sinking announces itself", typeof sunk.m.toast === "string", JSON.stringify(sunk.m.toast))
-ok("sinking schedules follow-up commands", sunk.cmd.TAG === "Batch" && sunk.cmd._0.length === 2)
+ok("sinking schedules follow-up commands", sunk.cmd.TAG === "Batch" && sunk.cmd._0.length === 3)
 
 const advanced = step(sunk.m, AdvanceHole)
-ok("advancing increments the hole", advanced.m.hole === 2)
+// Score.record already advanced the counter when the ball dropped; AdvanceHole
+// only builds the next course, so there is no second increment to check for.
+ok("the hole counter advanced exactly once", advanced.m.run.hole === 2)
+ok("advancing builds that hole's course", advanced.m.course.holeX === T.generate(2).holeX)
 ok("advancing resets strokes but keeps total",
-  advanced.m.strokes === 0 && advanced.m.total === strokesAtSink)
+  advanced.m.strokes === 0 && advanced.m.run.total === strokesAtSink)
 ok("advancing re-tees the ball", Math.abs(advanced.m.ball.x - advanced.m.course.teeX) < 1e-9)
 ok("advancing is Ready", phase(advanced.m) === "Ready")
 
 // --- the bug this rewrite was meant to kill ---------------------------------
-const mid = step(step(M.init(0.9), PointerDown({ x: 300, y: 300 })).m, PointerMoved({ x: 200, y: 250 })).m
+const mid = step(step(M.init(0.9, S.empty), PointerDown({ x: 300, y: 300 })).m, PointerMoved({ x: 200, y: 250 })).m
 const resized = step(mid, Rescaled(0.42))
 ok("a resize does not move the ball", resized.m.ball.x === mid.ball.x && resized.m.ball.y === mid.ball.y)
 ok("a resize does not rebuild the course", resized.m.course === mid.course)
@@ -112,14 +116,76 @@ ok("hole 7 is identical every time",
   c1.holeX === c2.holeX && c1.teeX === c2.teeX && c1.ys.every((v, i) => v === c2.ys[i]))
 
 // --- cheat toggle -----------------------------------------------------------
-const t1 = step(M.init(0.9), ToggledCheat)
-ok("cheat toggles on", t1.m.cheat === true)
-ok("cheat toggles off", step(t1.m, ToggledCheat).m.cheat === false)
+const t1 = step(M.init(0.9, S.empty), ToggledCheat)
+ok("cheat toggles on", t1.m.run.cheat === true)
+ok("cheat toggles off", step(t1.m, ToggledCheat).m.run.cheat === false)
+ok("toggling the cheat persists it", t1.cmd.TAG === "Persist")
 
 // --- cancel -----------------------------------------------------------------
-const cancelled = step(step(M.init(0.9), PointerDown({ x: 100, y: 100 })).m, PointerCancelled)
+const cancelled = step(step(M.init(0.9, S.empty), PointerDown({ x: 100, y: 100 })).m, PointerCancelled)
 ok("pointer cancel returns to Ready without a stroke",
   phase(cancelled.m) === "Ready" && cancelled.m.strokes === 0)
+
+
+// --- scoring -----------------------------------------------------------------
+const ResetPressed = "ResetPressed", ResetDisarmed = "ResetDisarmed"
+
+ok("a fresh run has no average", S.average(S.empty) === undefined)
+
+let run = S.empty
+run = S.record(run, 3)
+ok("recording a hole advances the counter", run.hole === 2)
+ok("recording a hole banks the strokes", run.total === 3)
+ok("first finished hole sets the best", run.best === 3 && run.bestHole === 1)
+ok("average after one hole", Math.abs(S.average(run) - 3) < 1e-9)
+
+run = S.record(run, 1)
+ok("an ace is counted", run.aces === 1)
+ok("a better hole lowers the best", run.best === 1 && run.bestHole === 2)
+ok("average tracks both holes", Math.abs(S.average(run) - 2) < 1e-9)
+
+run = S.record(run, 5)
+ok("a worse hole leaves the best alone", run.best === 1 && run.bestHole === 2)
+
+// round-trip through the save format
+const wire = S.encode(run)
+const back = S.decode(wire)
+ok("a run survives encode/decode", back !== undefined && JSON.stringify(back) === JSON.stringify(run),
+  wire + " -> " + JSON.stringify(back))
+ok("garbage in storage is rejected, not misread", S.decode("not a save") === undefined)
+ok("a future save version is rejected", S.decode("99|1|0|0|0|0|0") === undefined)
+ok("a truncated save is rejected", S.decode("1|5|10") === undefined)
+
+// sinking persists, and the command says so
+let sg = M.init(0.9, S.empty)
+const sol2 = findSink(sg)
+const sp2 = Math.hypot(sol2.vx, sol2.vy), ln2 = 190 * Math.min(1, sp2 / 1280)
+sg = step(sg, PointerDown({ x: sg.ball.x, y: sg.ball.y })).m
+sg = step(sg, PointerMoved({ x: sg.ball.x - (sol2.vx / sp2) * ln2, y: sg.ball.y - (sol2.vy / sp2) * ln2 })).m
+let done = step(step(sg, PointerUp).m, ShotEnded)
+ok("sinking emits a Persist command",
+  done.cmd.TAG === "Batch" && done.cmd._0.some(c => c.TAG === "Persist"))
+ok("sinking advances the persisted hole", done.m.run.hole === 2)
+ok("a one-shot hole is recorded as an ace", done.m.run.aces === 1, "aces=" + done.m.run.aces)
+
+// resuming
+const resumed = M.init(0.9, { hole: 12, total: 30, aces: 2, best: 1, bestHole: 4, cheat: true })
+ok("resuming restores the hole", resumed.run.hole === 12)
+ok("resuming restores the cheat toggle", resumed.run.cheat === true)
+ok("resuming rebuilds that hole's course", resumed.course.holeX === T.generate(12).holeX)
+ok("resuming starts at the tee with no strokes", resumed.strokes === 0)
+ok("resuming reports the carried average", Math.abs(S.average(resumed.run) - 30 / 11) < 1e-9)
+
+// reset needs two presses
+let armed = step(resumed, ResetPressed)
+ok("one press only arms the reset", armed.m.resetArmed === true && armed.m.run.hole === 12)
+ok("arming schedules a disarm", armed.cmd.TAG === "After")
+ok("the disarm timer clears it", step(armed.m, ResetDisarmed).m.resetArmed === false)
+const wiped = step(armed.m, ResetPressed)
+ok("the second press wipes the run", wiped.m.run.hole === 1 && wiped.m.run.total === 0)
+ok("wiping emits Forget",
+  wiped.cmd.TAG === "Batch" && wiped.cmd._0.some(c => c === "Forget" || c.TAG === "Forget"))
+ok("a disarmed reset does not wipe", step(resumed, ResetDisarmed).m.run.hole === 12)
 
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

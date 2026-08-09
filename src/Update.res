@@ -1,10 +1,11 @@
-// Pure state transitions. No DOM, no timers, no randomness beyond the seeded
-// generator — so this module is testable in plain Node.
+// Pure state transitions. No DOM, no timers, no storage — so this module is
+// testable in plain Node, which `npm test` does.
 
 open Model
 
 let maxDrag = 190.0 // world units of pull-back for full power
 let maxSpeed = 1280.0
+let resetWindow = 4000 // ms the reset button stays armed
 
 /**
 What a drag would launch. Both the preview and the real shot read from here, so
@@ -26,17 +27,28 @@ let aimVector = (from: point, to_: point) => {
   }
 }
 
+/** What the run says after a hole is finished. */
+let sunkToast = (run: Score.t, ~strokes) => {
+  let opening = switch strokes {
+  | 1 => run.aces > 1 ? `hole in one — ${Int.toString(run.aces)} aces` : "hole in one"
+  | n => `sunk in ${Int.toString(n)}`
+  }
+  switch Score.average(run) {
+  | Some(avg) => `${opening} · avg ${Float.toFixed(avg, ~digits=2)}`
+  | None => opening
+  }
+}
+
 let settle = (model, shot: Physics.shot) => {
   let m = {...model, ball: {x: shot.endX, y: shot.endY}}
   switch shot.outcome {
-  | Physics.Sunk => (
-      {
-        ...m,
-        phase: Between,
-        total: m.total + m.strokes,
-        toast: Some(m.strokes == 1 ? "hole in one" : `sunk in ${Int.toString(m.strokes)}`),
-      },
-      Batch([After(900, AdvanceHole), After(2000, ToastExpired)]),
+  | Physics.Sunk =>
+    // record() advances the hole counter, so AdvanceHole only has to build the
+    // course — no second increment.
+    let run = Score.record(m.run, ~strokes=m.strokes)
+    (
+      {...m, run, phase: Between, toast: Some(sunkToast(run, ~strokes=m.strokes))},
+      Batch([Persist(run), After(900, AdvanceHole), After(2600, ToastExpired)]),
     )
   | Physics.Rest => ({...m, phase: Ready}, NoCmd)
   }
@@ -65,10 +77,9 @@ let launch = (model, from, to_) => {
 }
 
 let nextHole = model => {
-  let hole = model.hole + 1
-  let course = Terrain.generate(~hole)
+  let course = Terrain.generate(~hole=model.run.hole)
   (
-    {...model, hole, strokes: 0, course, ball: teeOf(course), phase: Ready, program: None},
+    {...model, strokes: 0, course, ball: teeOf(course), phase: Ready, program: None},
     NoCmd,
   )
 }
@@ -79,8 +90,22 @@ let update = (model, msg) =>
   // in fixed world units, so rotating the device no longer rebuilds it under
   // the ball.
   | (Rescaled(scale), _) => ({...model, scale}, NoCmd)
-  | (ToggledCheat, _) => ({...model, cheat: !model.cheat}, NoCmd)
   | (ToastExpired, _) => ({...model, toast: None}, NoCmd)
+
+  | (ToggledCheat, _) =>
+    let run = {...model.run, cheat: !model.run.cheat}
+    ({...model, run}, Persist(run))
+
+  | (ResetPressed, _) =>
+    if model.resetArmed {
+      (
+        fresh(~scale=model.scale, ~run=Score.empty, ~toast=Some("new run")),
+        Batch([Forget, After(1800, ToastExpired)]),
+      )
+    } else {
+      ({...model, resetArmed: true}, After(resetWindow, ResetDisarmed))
+    }
+  | (ResetDisarmed, _) => ({...model, resetArmed: false}, NoCmd)
 
   | (PointerDown(p), Ready) => ({...model, phase: Aiming({from: p, to_: p}), toast: None}, NoCmd)
   | (PointerMoved(p), Aiming({from})) => ({...model, phase: Aiming({from, to_: p})}, NoCmd)

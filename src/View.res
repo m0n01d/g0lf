@@ -27,6 +27,8 @@ let shotStyle = Web.el("shotStyle")
 let hudHole = Web.el("hudHole")
 let hudStrokes = Web.el("hudStrokes")
 let hudTotal = Web.el("hudTotal")
+let hudAvg = Web.el("hudAvg")
+let resetBtn = Web.el("reset")
 let toastEl = Web.el("toast")
 
 // Screen y within the world box grows downward; the model's y grows up.
@@ -52,8 +54,8 @@ let drawCourse = (model: model) => {
   let clip = polygon(t.ys, ~step=t.step)
   ground->Web.set("clip-path", clip)
   crust->Web.set("clip-path", clip)
-  far1->Web.set("clip-path", polygon(Terrain.backdrop(~hole=model.hole, ~layer=1), ~step=26.0))
-  far2->Web.set("clip-path", polygon(Terrain.backdrop(~hole=model.hole, ~layer=0), ~step=26.0))
+  far1->Web.set("clip-path", polygon(Terrain.backdrop(~hole=model.run.hole, ~layer=1), ~step=26.0))
+  far2->Web.set("clip-path", polygon(Terrain.backdrop(~hole=model.run.hole, ~layer=0), ~step=26.0))
 
   cup->Web.set("left", Web.px(t.holeX -. Terrain.cupR))
   cup->Web.set("top", Web.px(flip(t.holeY) -. 3.0))
@@ -164,7 +166,7 @@ let showAim = (model: model, a: aim) => {
   // space (y down), hence the negated dy.
   let angle = Math.atan2(~y=-.dy, ~x=dx) *. 57.2958
 
-  if model.cheat && power > 0.03 {
+  if model.run.cheat && power > 0.03 {
     showTrail(model, ~vx, ~vy)
   } else {
     hideTrail()
@@ -201,7 +203,7 @@ let sync = (model: model) => {
     world->Web.set("transform", `scale(${Float.toFixed(model.scale, ~digits=5)})`)
   }
 
-  if first || changed(m => m.hole) {
+  if first || changed(m => m.run.hole) {
     drawCourse(model)
   }
 
@@ -228,18 +230,32 @@ let sync = (model: model) => {
   | _ => if first || changed(m => m.phase) { hideAim() }
   }
 
-  if first || changed(m => m.hole) {
-    hudHole->Web.setText(Int.toString(model.hole))
+  if first || changed(m => m.run.hole) {
+    hudHole->Web.setText(Int.toString(model.run.hole))
   }
   if first || changed(m => m.strokes) {
     hudStrokes->Web.setText(Int.toString(model.strokes))
   }
-  if first || changed(m => m.total) {
-    hudTotal->Web.setText(Int.toString(model.total))
+  if first || changed(m => m.run.total) {
+    hudTotal->Web.setText(Int.toString(model.run.total))
+  }
+  // Average strokes per completed hole: the score that actually means something
+  // on a course with no par and no end.
+  if first || changed(m => m.run.total) || changed(m => m.run.hole) {
+    hudAvg->Web.setText(
+      switch Score.average(model.run) {
+      | Some(a) => Float.toFixed(a, ~digits=2)
+      | None => "—"
+      },
+    )
   }
 
-  if first || changed(m => m.cheat) {
-    cheatBtn->Web.setAttribute("aria-pressed", model.cheat ? "true" : "false")
+  if first || changed(m => m.run.cheat) {
+    cheatBtn->Web.setAttribute("aria-pressed", model.run.cheat ? "true" : "false")
+  }
+  if first || changed(m => m.resetArmed) {
+    resetBtn->Web.setText(model.resetArmed ? "tap again" : "new run")
+    resetBtn->Web.setAttribute("aria-pressed", model.resetArmed ? "true" : "false")
   }
 
   if first || changed(m => m.toast) {

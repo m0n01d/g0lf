@@ -46,3 +46,24 @@ let restart = (e, value) => {
   let _ = e->offsetWidth
   e->set("animation", value)
 }
+
+// localStorage. Both calls are wrapped by callers because Safari throws on
+// setItem in private browsing rather than failing quietly.
+@val @scope("localStorage") external getItem: string => Null.t<string> = "getItem"
+@val @scope("localStorage") external setItem: (string, string) => unit = "setItem"
+@val @scope("localStorage") external removeItem: string => unit = "removeItem"
+
+let read = key =>
+  try getItem(key)->Null.toOption catch {
+  | _ => None
+  }
+
+let write = (key, value) =>
+  try setItem(key, value) catch {
+  | _ => ()
+  }
+
+let forget = key =>
+  try removeItem(key) catch {
+  | _ => ()
+  }

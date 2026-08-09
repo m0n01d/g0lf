@@ -17,17 +17,18 @@ type phase =
 type model = {
   // World units -> screen px. The only thing that depends on the viewport.
   scale: float,
-  hole: int,
-  strokes: int,
-  total: int,
+  // Everything that survives closing the app.
+  run: Score.t,
+  strokes: int, // on the current hole; deliberately not persisted
   course: Terrain.t,
   ball: point, // world coords, y up; where the ball is at rest
   spin: float, // accumulated rotation, so it never snaps back between shots
-  cheat: bool,
   shotId: int,
   program: option<Css.program>,
   toast: option<string>,
   phase: phase,
+  // Wiping a run that has taken hours needs a second press to confirm.
+  resetArmed: bool,
 }
 
 type msg =
@@ -40,6 +41,8 @@ type msg =
   | ToggledCheat
   | AdvanceHole
   | ToastExpired
+  | ResetPressed
+  | ResetDisarmed
 
 /**
 Effects, described rather than performed.
@@ -52,26 +55,36 @@ type rec cmd =
   | NoCmd
   | Batch(array<cmd>)
   | After(int, msg)
+  | Persist(Score.t)
+  | Forget
 
 let teeOf = (course: Terrain.t) => {x: course.teeX, y: course.teeY +. Physics.ballR}
 
-let init = (~scale) => {
-  let course = Terrain.generate(~hole=1)
+let fresh = (~scale, ~run: Score.t, ~toast) => {
+  let course = Terrain.generate(~hole=run.hole)
   {
     scale,
-    hole: 1,
+    run,
     strokes: 0,
-    total: 0,
     course,
     ball: teeOf(course),
     spin: 0.0,
-    cheat: false,
     shotId: 0,
     program: None,
-    toast: Some("drag back from the ball, then let go"),
+    toast,
     phase: Ready,
+    resetArmed: false,
   }
 }
+
+let init = (~scale, ~run) =>
+  fresh(
+    ~scale,
+    ~run,
+    ~toast=run.hole == 1 && run.total == 0
+      ? Some("drag back from the ball, then let go")
+      : Some(`resuming at hole ${Int.toString(run.hole)}`),
+  )
 
 let isWatching = m =>
   switch m.phase {

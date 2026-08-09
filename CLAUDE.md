@@ -103,6 +103,27 @@ narrows by well over half while never closing.
 `preview.html` renders a grid of holes for eyeballing the curve; it is dev-only and is not part of
 the production build.
 
+## Keeping score
+
+The run persists to `localStorage` under `g0lf.run.v1`, so closing the app and reopening resumes
+where you were. `Score.res` holds it: hole, total strokes, aces, best hole, and the trajectory
+toggle.
+
+- **`avg`** — total strokes over completed holes — is the score that means anything here. There is
+  no par and no end, so a total on its own only tells you how long you have played.
+- The save is written **only when a hole is sunk**, so there is no mid-hole state to restore and no
+  question about quitting to dodge a bad hole — you replay that hole from the tee.
+- Encoding is a version-tagged pipe-delimited line (`1|hole|total|aces|best|bestHole|cheat`) rather
+  than JSON. It is six integers, and the version means a future format change discards old saves
+  instead of misreading them. `decode` returns an option; anything unparseable starts a fresh run.
+- `Score.encode`/`decode`/`record` are pure. The storage call itself is a `cmd` (`Persist` /
+  `Forget`) interpreted by `Game.res`, so `update` stays testable.
+- **`new run` needs two presses** within 4s. Wiping a long run on a stray tap would be miserable,
+  and the armed state lives in the model with an `After(4000, ResetDisarmed)` command.
+
+`Web.read`/`write`/`forget` wrap the storage calls in `try`, because Safari throws on `setItem` in
+private browsing rather than failing quietly.
+
 ## Deploying
 
 Live at **https://m0n01d.github.io/g0lf/**, served from the `gh-pages` branch.
@@ -150,8 +171,9 @@ and piles them into a blob wherever the ball is slow.
 ## Architecture (TEA)
 
 Model / Msg / update / view, with effects described as `cmd` values and interpreted by `Game.res`.
-`update` is pure — 33 assertions run against it in plain Node with no DOM, covering the stroke
-cycle, hole progression, phase guards, and the resize invariants.
+`update` is pure — `npm test` runs 62 assertions against it in plain Node with no DOM, covering the
+stroke cycle, hole progression, phase guards, the resize invariants, and the whole scoring and
+save-format surface.
 
 Two things are worth knowing before editing `View.res`:
 

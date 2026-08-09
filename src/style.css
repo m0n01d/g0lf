@@ -285,8 +285,11 @@ body {
   left: 0;
   right: 0;
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
   pointer-events: none;
 }
 .chip {
@@ -322,6 +325,37 @@ body {
 }
 .chip-toggle b {
   font-size: 13px;
+}
+
+/* Wiping a long run needs a confirm, so the button carries its own armed state. */
+.chip-reset {
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 9px 12px;
+}
+.chip-reset[aria-pressed="true"] {
+  background: color-mix(in oklab, var(--flag), rgba(34, 22, 44, 0.32) 30%);
+  opacity: 1;
+}
+
+/* Narrow phones: shrink rather than wrap into two rows. */
+@media (max-width: 560px) {
+  .chip {
+    padding: 6px 9px;
+    gap: 4px;
+  }
+  .chip b {
+    font-size: 13px;
+  }
+  .chip small {
+    font-size: 9px;
+    letter-spacing: 0.05em;
+  }
+  .chip-reset {
+    font-size: 9px;
+    padding: 8px 9px;
+  }
 }
 
 .chip small {
