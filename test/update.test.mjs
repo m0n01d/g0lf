@@ -99,7 +99,9 @@ ok("advancing builds that hole's course", advanced.m.course.holeX === T.generate
 ok("advancing resets strokes but keeps total",
   advanced.m.strokes === 0 && advanced.m.run.total === strokesAtSink)
 ok("advancing re-tees the ball", Math.abs(advanced.m.ball.x - advanced.m.course.teeX) < 1e-9)
-ok("advancing is Ready", phase(advanced.m) === "Ready")
+// Advancing now enters the dune morph; Ready comes after ShiftDone.
+ok("advancing enters the shift, and reaches Ready when it ends",
+  phase(advanced.m) === "Shifting" && phase(step(advanced.m, "ShiftDone").m) === "Ready")
 
 // --- the bug this rewrite was meant to kill ---------------------------------
 const mid = step(step(M.init(0.9, S.empty), PointerDown({ x: 300, y: 300 })).m, PointerMoved({ x: 200, y: 250 })).m
@@ -237,6 +239,33 @@ ok("a disarmed reset does not wipe", step(resumed, ResetDisarmed).m.run.hole ===
   const afterCancel = step(aiming, PointerCancelled).m
   ok("a cancelled gesture returns to Ready", phase(afterCancel) === "Ready")
   ok("and can immediately aim again", phase(step(afterCancel, PointerDown({ x: 1, y: 1 })).m) === "Aiming")
+}
+
+
+// --- the hole-to-hole shift ----------------------------------------------------
+{
+  const ShiftDone = "ShiftDone"
+  let g = M.init(0.9, S.empty)
+  const sol = findSink(g)
+  const sp = Math.hypot(sol.vx, sol.vy), ln = 190 * Math.min(1, sp / 1280)
+  g = step(g, PointerDown({ x: g.ball.x, y: g.ball.y })).m
+  g = step(g, PointerMoved({ x: g.ball.x - (sol.vx / sp) * ln, y: g.ball.y - (sol.vy / sp) * ln })).m
+  const sunk = step(step(g, PointerUp).m, ShotEnded).m
+  const shifting = step(sunk, AdvanceHole)
+  ok("advancing enters the shift rather than going straight to Ready",
+    phase(shifting.m) === "Shifting")
+  ok("the new course is already in the model during the shift",
+    shifting.m.course !== sunk.course)
+  ok("the shift schedules its own end", shifting.cmd.TAG === "After")
+  ok("the view is told to redraw for the morph", M.needsRedraw(sunk, shifting.m) === true)
+
+  const blocked = step(shifting.m, PointerDown({ x: 300, y: 300 }))
+  ok("input is refused mid-shift", phase(blocked.m) === "Shifting" && blocked.m.strokes === 0)
+
+  const done = step(shifting.m, ShiftDone)
+  ok("the shift ends in Ready", phase(done.m) === "Ready")
+  ok("and then input works", phase(step(done.m, PointerDown({ x: 1, y: 1 })).m) === "Aiming")
+  ok("a stray ShiftDone while Ready is ignored", phase(step(done.m, ShiftDone).m) === "Ready")
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

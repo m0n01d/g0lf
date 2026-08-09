@@ -174,6 +174,31 @@ cannot leave it and the capture bought nothing. `update` now also accepts a
 `PointerDown` while already `Aiming`, so a missed `pointerup` starts a new aim
 rather than locking the game.
 
+## Moving to the next hole
+
+Sinking does not cut to the next hole — the dunes **reshape into it**. Every course
+has the same number of polygon points (129 for the ground, 41 for the ridges),
+because `count` derives from a fixed world width and step, and that is the whole
+reason `clip-path` interpolates at all. Cup, flag, ball and shadow transition to
+their new places over the same beat, and the wind gets up while it happens.
+
+- Measured before committing to it: the morph holds a **steady 60fps** (median
+  16.7ms, p95 17.0ms), slightly *steadier* than a plain transform pan, whose worst
+  frame was 29ms. `clip-path` is paint-bound, but a 129-point polygon over a
+  flat-filled div is cheap. Re-measure on a real phone before trusting it there.
+- A camera pan was the alternative — Desert Golf's answer — but their course is one
+  continuous strip, so panning reveals what was always there. Ours are independent
+  1000-wide worlds, so a pan would show a discontinuity at the seam or need
+  edge-blending invented for it.
+- `Shifting` is a real phase, not a flag, so input is refused while the ground is
+  moving. `Update.shiftMs` must match `--shift` in the CSS.
+- The transition **durations live on the `.shifting` class**, never on the elements,
+  so nothing can be transitioning `left`/`top` while a shot is in flight — a
+  permanent transition on the ball would smear every post-shot settle.
+- `--surge` is set by the class and `--wind` inline, so they compose rather than one
+  overriding the other. The sand's opacity ramp must stay **shorter** than the shift,
+  or the surge never arrives before it starts decaying.
+
 ## Wind
 
 **This is the first real departure from Desert Golf.** Every hole has a steady

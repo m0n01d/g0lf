@@ -89,6 +89,7 @@ const drag = async (p, fromX, fromY, dx, dy) => {
   await p.mouse.up()
 }
 const settle = (p, ms = 3600) => p.waitForTimeout(ms)
+const phaseAcceptsInput = strokes => strokes === "0"
 
 // Sink the current hole deterministically, by sweeping an aim while holding the
 // pointer down and watching the game's own "this drag holes out" marker. That
@@ -172,6 +173,44 @@ console.log(`\nchecking ${baseUrl}\n`)
     new Set(seen.map(s => s.flag)).size === seen.length, JSON.stringify(seen.map(s => s.flag)))
   ok("the terrain polygon changes on every hole",
     new Set(seen.map(s => s.clip)).size === seen.length, JSON.stringify(seen.map(s => s.clip)))
+  await p.context().close()
+}
+
+// ------------------------------ 3b. the next hole morphs, it does not snap
+// The dunes reshape into the next hole: every course has the same number of
+// polygon points, so clip-path interpolates. Measured at a steady 60fps.
+{
+  const p = await newPage()
+  const read = () => p.evaluate(() => ({
+    clip: getComputedStyle(document.getElementById("ground")).clipPath,
+    shifting: document.getElementById("stage").className.includes("shifting"),
+    sand: parseFloat(getComputedStyle(document.querySelector(".sand")).opacity),
+  }))
+  const calmSand = (await read()).sand
+  ok("a hole can be sunk to start the shift", await aimUntilSinks(p))
+
+  // Wait for the shift to begin rather than guessing at the timing.
+  await p.waitForFunction(
+    () => document.getElementById("stage").className.includes("shifting"),
+    null, { timeout: 20000 })
+  const start = await read()
+  await p.waitForTimeout(620)   // past the 0.55s surge ramp, still inside the shift
+  const mid = await read()
+  await p.waitForFunction(
+    () => !document.getElementById("stage").className.includes("shifting"),
+    null, { timeout: 20000 })
+  await p.waitForTimeout(1000)  // let the surge decay fully before reading
+  const end = await read()
+
+  ok("the shift is a real phase the view knows about", start.shifting && !end.shifting)
+  ok("the terrain ends up somewhere different", start.clip !== end.clip)
+  ok("mid-shift is a genuine in-between, not a snap",
+    mid.clip !== start.clip && mid.clip !== end.clip)
+  ok("the wind gets up while the desert rearranges",
+    mid.sand > calmSand && mid.sand > end.sand,
+    `calm ${calmSand} -> mid ${mid.sand} -> settled ${end.sand}`)
+  ok("the hole is playable again once the dunes stop",
+    phaseAcceptsInput(await p.evaluate(() => document.getElementById("hudStrokes").textContent)))
   await p.context().close()
 }
 

@@ -203,6 +203,12 @@ let sync = (model: model) => {
     world->Web.set("transform", `scale(${Float.toFixed(model.scale, ~digits=5)})`)
   }
 
+  // The shifting class must be on before the new clip-path is written, or the
+  // terrain snaps instead of morphing.
+  if first || changed(m => isShifting(m)) {
+    stage->Web.setClassName(isShifting(model) ? "stage shifting" : "stage")
+  }
+
   if needsRedraw(prev, model) {
     drawCourse(model)
     // Wind is a property of the hole. Publishing it as two custom properties

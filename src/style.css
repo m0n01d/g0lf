@@ -17,6 +17,10 @@
 
   --ball: #fff6e6;
   --flag: #e2604f;
+
+  /* Duration of the hole-to-hole dune morph. Must match Update.shiftMs. */
+  --shift: 1000ms;
+  --ease-shift: cubic-bezier(0.45, 0, 0.25, 1);
 }
 
 * {
@@ -352,9 +356,10 @@ body {
      it is blowing, flips to point downwind, and ripples faster the harder it
      blows. `rotate` and `scale` are independent properties, so they compose
      with the wave animation's `transform` instead of fighting it. */
-  rotate: calc((1 - var(--wind, 0)) * 40deg);
+  rotate: calc((1 - min(1, var(--wind, 0) + var(--surge, 0))) * 40deg);
   scale: var(--wind-dir, 1) 1;
-  animation: flag-wave calc(2.7s - var(--wind, 0) * 1.85s) ease-in-out infinite;
+  animation: flag-wave max(0.6s, calc(2.7s - min(1, var(--wind, 0) + var(--surge, 0)) * 1.85s))
+    ease-in-out infinite;
 }
 
 /* Irregular stops so it reads as gusting wind rather than a metronome. */
@@ -494,6 +499,58 @@ body {
 }
 
 
+
+/* -------------------------------------------------------------- the shift */
+
+/* Moving to the next hole reshapes the dunes rather than cutting to them. Every
+   course has the same number of polygon points (129 for the ground, 41 for the
+   ridges), which is what makes clip-path interpolable at all. Measured at a
+   steady 60fps: the polygon is small and the fill is flat, so the paint cost
+   never became the problem it looked like it would be.
+
+   The durations live on a class rather than on the elements, so nothing is
+   transitioning while a shot is in flight. */
+.ground,
+.crust,
+.ridge,
+.cup,
+.flag,
+.ball-x,
+.ball-y,
+.shadow-x,
+.shadow {
+  transition-duration: 0s;
+}
+.stage.shifting .ground,
+.stage.shifting .crust,
+.stage.shifting .ridge {
+  transition-property: clip-path;
+  transition-duration: var(--shift);
+  transition-timing-function: var(--ease-shift);
+}
+.stage.shifting .cup,
+.stage.shifting .flag,
+.stage.shifting .shadow-x,
+.stage.shifting .ball-x {
+  transition-property: left, top;
+  transition-duration: var(--shift);
+  transition-timing-function: var(--ease-shift);
+}
+/* The ball lifts as it travels, so it arcs to the new tee instead of sliding. */
+.stage.shifting .ball-y,
+.stage.shifting .shadow {
+  transition-property: top;
+  transition-duration: var(--shift);
+  transition-timing-function: cubic-bezier(0.35, -0.35, 0.3, 1);
+}
+
+/* The wind gets up while the desert is rearranging itself. --surge is set by a
+   class, and --wind is an inline custom property, so the two compose instead of
+   one overriding the other. */
+.stage.shifting {
+  --surge: 0.75;
+}
+
 /* ------------------------------------------------------------------ sand */
 
 /* Only shows up when it is really blowing: the opacity clamp is zero below
@@ -505,8 +562,8 @@ body {
   overflow: hidden;
   pointer-events: none;
   scale: var(--wind-dir, 1) 1;
-  opacity: clamp(0, calc((var(--wind, 0) - 0.42) * 2.6), 0.9);
-  transition: opacity 1.4s ease;
+  opacity: clamp(0, calc((var(--wind, 0) + var(--surge, 0) - 0.42) * 2.6), 0.9);
+  transition: opacity 0.55s ease;
 }
 .sand i {
   position: absolute;
@@ -517,7 +574,7 @@ body {
   animation-name: blow;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
-  animation-duration: calc(4.2s - var(--wind, 0) * 2.2s);
+  animation-duration: max(0.5s, calc(4.2s - (var(--wind, 0) + var(--surge, 0)) * 2.2s));
 }
 
 @keyframes blow {
@@ -656,6 +713,18 @@ body {
   }
   .sand {
     display: none;
+  }
+  /* No morph either — the next hole simply appears. */
+  .stage.shifting .ground,
+  .stage.shifting .crust,
+  .stage.shifting .ridge,
+  .stage.shifting .cup,
+  .stage.shifting .flag,
+  .stage.shifting .ball-x,
+  .stage.shifting .ball-y,
+  .stage.shifting .shadow-x,
+  .stage.shifting .shadow {
+    transition-duration: 0s;
   }
   .bird {
     display: none;

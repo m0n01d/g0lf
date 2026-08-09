@@ -13,6 +13,9 @@ type phase =
   // and, from it, where the ball will come to rest.
   | Watching(Physics.shot)
   | Between
+  // The dunes are reshaping into the next hole. Input is refused here, which is
+  // the whole reason it is a phase rather than a flag.
+  | Shifting
 
 type model = {
   // World units -> screen px. The only thing that depends on the viewport.
@@ -40,6 +43,7 @@ type msg =
   | ShotEnded
   | ToggledCheat
   | AdvanceHole
+  | ShiftDone
   | ToastExpired
   | ResetPressed
   | ResetDisarmed
@@ -85,6 +89,12 @@ let init = (~scale, ~run) =>
       ? Some("drag back from the ball, then let go")
       : Some(`resuming at hole ${Int.toString(run.hole)}`),
   )
+
+let isShifting = m =>
+  switch m.phase {
+  | Shifting => true
+  | _ => false
+  }
 
 let isWatching = m =>
   switch m.phase {

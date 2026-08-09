@@ -6,6 +6,8 @@ open Model
 let maxDrag = 190.0 // world units of pull-back for full power
 let maxSpeed = 1280.0
 let resetWindow = 4000 // ms the reset button stays armed
+/** How long the dunes take to reshape into the next hole. Must match --shift. */
+let shiftMs = 1000
 
 /**
 What a drag would launch. Both the preview and the real shot read from here, so
@@ -48,7 +50,7 @@ let settle = (model, shot: Physics.shot) => {
     let run = Score.record(m.run, ~strokes=m.strokes)
     (
       {...m, run, phase: Between, toast: Some(sunkToast(run, ~strokes=m.strokes))},
-      Batch([Persist(run), After(900, AdvanceHole), After(2600, ToastExpired)]),
+      Batch([Persist(run), After(650, AdvanceHole), After(2600, ToastExpired)]),
     )
   | Physics.Rest => ({...m, phase: Ready}, NoCmd)
   }
@@ -78,9 +80,12 @@ let launch = (model, from, to_) => {
 
 let nextHole = model => {
   let course = Terrain.generate(~hole=model.run.hole)
+  // The new course goes in immediately — the view transitions the clip-path
+  // toward it rather than swapping — but the hole is not playable until the
+  // dunes have finished moving.
   (
-    {...model, strokes: 0, course, ball: teeOf(course), phase: Ready, program: None},
-    NoCmd,
+    {...model, strokes: 0, course, ball: teeOf(course), phase: Shifting, program: None},
+    After(shiftMs, ShiftDone),
   )
 }
 
@@ -118,6 +123,7 @@ let update = (model, msg) =>
 
   | (ShotEnded, Watching(shot)) => settle(model, shot)
   | (AdvanceHole, Between) => nextHole(model)
+  | (ShiftDone, Shifting) => ({...model, phase: Ready}, NoCmd)
 
   // Anything else is a message that does not apply to the current phase —
   // a stray pointer during flight, a late timer. Ignoring it is the whole
