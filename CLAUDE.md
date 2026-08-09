@@ -115,7 +115,16 @@ offset twinkle periods, and a slow drift and glow on the disc.
 - Each cloud band is twice the viewport wide with the pattern tiling every half
   of it, so a `-50%` translate lands exactly one tile over. Verified rather than
   eyeballed: each band renders **pixel-identically** at `t=0` and `t=duration`.
-- All of it is silenced under `prefers-reduced-motion`.
+- All of it is silenced under `prefers-reduced-motion`. **If you see no motion at
+  all, check that first** — iOS and macOS "Reduce Motion" turns the whole sky off.
+- Visibility is measured, not judged by eye. `pctOver4` — the share of sky pixels
+  that shift by 4/255 or more over five seconds — is the number that matters. The
+  first version scored **0.2%** and was invisible; it is now **28%**. Anything
+  under a few percent will not read as motion.
+- Every blob must fit inside its tile, or the tile edge shows as a hard vertical
+  line. Blobs that cross an edge are repeated a full tile over so their halves
+  meet. A bare-gradient control jumps 1/255 between neighbouring pixels; with
+  clouds it is 6/255, scattered rather than concentrated at a boundary.
 
 **`setPointerCapture` had to go to make this work.** With any element painted
 inside `#stage` beneath `#world`, Chromium started firing `pointercancel`
