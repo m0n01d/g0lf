@@ -73,6 +73,9 @@ has reached the user got past unit tests by being invisible to them.
 | stars >=60 near-white px | a coreless gradient made "bigger" stars no brighter |
 | flag ripples, pole sways, bird flies | wind and birds are meant to be seen |
 | ball is >=40 bright px mid-hop | sliding it to the next tee sent it *under* the terrain |
+| no sun pixels below the dune crest | translucent ridges let the disc show through them |
+| the world fills the screen after rotating | the installed app came back cropped, with dead space |
+| ball lands >25px off the previewed line | the cheat must not quietly account for the wind |
 | no page or console errors | catches the silent ones |
 
 Three rules learned the hard way:
@@ -171,6 +174,13 @@ offset twinkle periods, and a slow drift and glow on the disc.
   line. Blobs that cross an edge are repeated a full tile over so their halves
   meet. A bare-gradient control jumps 1/255 between neighbouring pixels; with
   clouds it is 6/255, scattered rather than concentrated at a boundary.
+- **The sun is clipped to the sky, and painting it first is not enough.** It sits
+  before the ridges in the DOM, which looks like it should put it behind them —
+  but both ridge layers are translucent, so it showed straight through as a ghost
+  circle lying on the sand. `View.skyPolygon` cuts the horizon out of `#sunClip`,
+  from the pointwise max of the two ridge silhouettes. The ground and crust are
+  opaque and need no help. Same fixed point count as the ridges, so it morphs
+  with them on a hole change.
 
 **`setPointerCapture` had to go to make this work.** With any element painted
 inside `#stage` beneath `#world`, Chromium started firing `pointercancel`
@@ -315,12 +325,25 @@ no second place for the two to disagree.
 Dots are spaced by arc length, not by time; even time spacing smears them over the fast opening arc
 and piles them into a blob wherever the ball is slow.
 
+**The one thing it will not tell you is the wind.** `showTrail` runs on `Terrain.calm(course)` — the
+same hole with the air still — so the dots draw the ideal line and you have to read the crosswind
+off the flag and hold into it. That is where the difficulty lives: the trail is exact on a calm hole
+and increasingly a lie as the wind gets up, and finding the offset is the game.
+
+The end marker comes from that same still-air shot, deliberately. A marker that knew about the wind
+would hand back the answer the dots were made to withhold — you would sweep the aim until it turned
+red and the wind may as well not exist. So the cheat can now be wrong, and holding it honest is
+someone else's job: hole 28 has a drag whose still-air path holes out and whose real one does not.
+
+`test/browser.mjs` covers both ends. Hole 1 is dead calm, so preview and shot must agree to under a
+pixel; hole 36 blows at 61% of maximum, and the ball must land more than 25px off the previewed line.
+
 ## Architecture (TEA)
 
 Model / Msg / update / view, with effects described as `cmd` values and interpreted by `Game.res`.
-`update` is pure — `npm test` runs 75 assertions against it in plain Node with no DOM, covering the
-stroke cycle, hole progression, phase guards, the resize invariants, and the whole scoring and
-save-format surface.
+`update` is pure — `npm test` runs 99 assertions against it in plain Node with no DOM, covering the
+stroke cycle, hole progression, phase guards, the resize invariants, the still-air preview, and the
+whole scoring and save-format surface.
 
 Two things are worth knowing before editing `View.res`:
 
@@ -357,6 +380,17 @@ height, so the dunes need only `0.36 x viewportWidth` of vertical room — true 
 **Known trade-off:** on a tall portrait phone this leaves the course as a small band at the bottom
 (a 5:3 world does not fit a 1:2 screen). Landscape is excellent. Fixing portrait properly means a
 camera that scales to fit height and pans horizontally to follow the ball.
+
+**Rotating has to be measured late, not once.** The installed app came back from a rotation cropped
+and surrounded by dead space, because the new size was measured while the old layout was still in
+effect — iOS fires `resize` before it has adopted the new viewport, and nothing fires again to
+correct it. `Game.remeasure` therefore measures now, at 120ms and at 400ms, and listens on
+`orientationchange` and `visualViewport` as well as `resize`. `Rescaled` only stores a number and
+the view diffs on it, so the measurements that agree cost nothing.
+
+Everything keeps measuring `#stage`'s own rect, `toWorld` included. Reading the size from one source
+and the pointer position from another would make aiming wrong for as long as the two disagreed —
+which is exactly the window this is about.
 
 ## Use `resq` when editing the `.res` files here
 

@@ -71,7 +71,29 @@ let init = () => {
   View.cheatBtn->Web.onClick("click", () => dispatch(ToggledCheat))
   View.resetBtn->Web.onClick("click", () => dispatch(ResetPressed))
 
-  Web.window->Web.onResize("resize", () => dispatch(Rescaled(scaleFor())))
+  // Rotating the device only changes how the world is projected — but the new
+  // size has to be measured *after* the browser has actually adopted it. In an
+  // installed iOS web app `resize` fires while the previous layout is still in
+  // effect, so a single synchronous measurement leaves the world scaled for the
+  // old orientation: the course is cropped and there is dead space around it,
+  // and it stays that way until something else happens to fire a resize.
+  //
+  // Measuring again a beat later heals that without a render loop. `Rescaled`
+  // only stores a number and the view diffs on it, so the extra measurements
+  // that agree cost nothing. Everything — including `toWorld` — keeps measuring
+  // the stage's own rect, so the projection and the pointer mapping can never
+  // disagree about the size even while it is settling.
+  let remeasure = () => {
+    dispatch(Rescaled(scaleFor()))
+    Web.setTimeout(() => dispatch(Rescaled(scaleFor())), 120)
+    Web.setTimeout(() => dispatch(Rescaled(scaleFor())), 400)
+  }
+  Web.window->Web.onResize("resize", remeasure)
+  Web.window->Web.onResize("orientationchange", remeasure)
+  switch Web.visualViewport->Null.toOption {
+  | Some(vv) => vv->Web.onViewport("resize", remeasure)
+  | None => ()
+  }
 }
 
 init()

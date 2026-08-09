@@ -294,6 +294,16 @@ let generate = (~hole) => {
   {...t, teeY: heightAt(t, teeX), holeY: heightAt(t, holeX)}
 }
 
+/**
+The same hole with the air still.
+
+The trajectory preview runs on this rather than on the real course, so the dots
+draw the ideal line and leave the wind for the player to read off the flag. It is
+the one thing the cheat does not tell you, and it is what stops a windy hole from
+being solved by sweeping the aim until the marker turns red.
+*/
+let calm = (t: t) => {...t, wind: 0.0}
+
 // Decorative background ridges. No physics, just parallax depth.
 let backdrop = (~hole, ~layer) => {
   let (width, height) = (worldW, worldH)

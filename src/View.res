@@ -13,6 +13,7 @@ let ground = Web.el("ground")
 let crust = Web.el("crust")
 let far1 = Web.el("far1")
 let far2 = Web.el("far2")
+let sunClip = Web.el("sunClip")
 let cup = Web.el("cup")
 let flag = Web.el("flag")
 let ballX = Web.el("ballX")
@@ -49,13 +50,49 @@ let polygon = (ys, ~step) => {
   `polygon(${Array.join(pts, ",")})`
 }
 
+/**
+The sky: everything above the crest line, traced left to right and closed along
+the top of the world.
+
+The sun is clipped to this so it sets behind the dunes. It needs saying because
+the obvious reading — the disc is painted before the ridges, so the ridges cover
+it — is wrong: both ridge layers are translucent, so the disc showed straight
+through them. The ground and crust are opaque and need no help.
+
+Point count is fixed by the sample step, exactly as `polygon` is, so this
+interpolates across a hole change along with the ridges themselves.
+*/
+let skyPolygon = (ys, ~step) => {
+  let pts = []
+  Array.forEachWithIndex(ys, (y, i) => {
+    let x = Int.toFloat(i) *. step
+    if x <= Terrain.worldW +. step {
+      Array.push(pts, `${Web.px(Terrain.clamp(x, 0.0, Terrain.worldW))} ${Web.px(flip(y))}`)
+    }
+  })
+  Array.push(pts, `${Web.px(Terrain.worldW)} 0px`)
+  Array.push(pts, "0px 0px")
+  `polygon(${Array.join(pts, ",")})`
+}
+
 let drawCourse = (model: model) => {
   let t = model.course
   let clip = polygon(t.ys, ~step=t.step)
   ground->Web.set("clip-path", clip)
   crust->Web.set("clip-path", clip)
-  far1->Web.set("clip-path", polygon(Terrain.backdrop(~hole=model.run.hole, ~layer=1), ~step=26.0))
-  far2->Web.set("clip-path", polygon(Terrain.backdrop(~hole=model.run.hole, ~layer=0), ~step=26.0))
+  let ridgeNear = Terrain.backdrop(~hole=model.run.hole, ~layer=1)
+  let ridgeFar = Terrain.backdrop(~hole=model.run.hole, ~layer=0)
+  far1->Web.set("clip-path", polygon(ridgeNear, ~step=26.0))
+  far2->Web.set("clip-path", polygon(ridgeFar, ~step=26.0))
+  // Whichever ridge stands taller at each sample is the one the sun has to
+  // disappear behind. They share a grid, so a pointwise max is exact.
+  sunClip->Web.set(
+    "clip-path",
+    skyPolygon(
+      Array.mapWithIndex(ridgeFar, (y, i) => Math.max(y, Array.getUnsafe(ridgeNear, i))),
+      ~step=26.0,
+    ),
+  )
 
   cup->Web.set("left", Web.px(t.holeX -. Terrain.cupR))
   cup->Web.set("top", Web.px(flip(t.holeY) -. 3.0))
@@ -116,15 +153,28 @@ let dots = Array.fromInitializer(~length=trailDots, _ => {
 let hideTrail = () => trail->Web.set("opacity", "0")
 
 /**
-Draw the predicted path.
+Draw the predicted path — in still air.
 
 Runs the same `Physics.simulate` the real shot runs and reads positions back
 with `Physics.sample`, which rebuilds each segment from the same constant
-acceleration the keyframes encode — so these dots are not an estimate of the
-shot, they are the shot.
+acceleration the keyframes encode. So the dots are not an estimate of the shot:
+on a calm hole they *are* the shot, to within 0.15px.
+
+The one thing they leave out is the wind. `Terrain.calm` strips it, so the trail
+draws the ideal line and the player has to read the crosswind off the flag and
+hold into it. Without that, a windy hole is solved by sweeping the aim until the
+end marker turns red, and the wind may as well not exist. The marker comes from
+this same still-air shot for exactly that reason — a marker that knew about the
+wind would hand back the answer the dots were made to withhold.
 */
 let showTrail = (model: model, ~vx, ~vy) => {
-  let shot = Physics.simulate(model.course, ~x0=model.ball.x, ~y0=model.ball.y, ~vx0=vx, ~vy0=vy)
+  let shot = Physics.simulate(
+    Terrain.calm(model.course),
+    ~x0=model.ball.x,
+    ~y0=model.ball.y,
+    ~vx0=vx,
+    ~vy0=vy,
+  )
 
   // Walk the path finely, then place dots at even *distance* apart rather than
   // even time apart, which would smear them over the fast opening arc and pile

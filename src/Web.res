@@ -29,6 +29,12 @@ type animationEvent = {animationName: string}
 @val external window: window = "window"
 @val external setTimeout: (unit => unit, int) => unit = "setTimeout"
 
+// The visual viewport is the one that reports a new size first during an
+// orientation change, and it is absent on older Safari, so it is an option.
+type viewport
+@val external visualViewport: Null.t<viewport> = "visualViewport"
+@send external onViewport: (viewport, string, unit => unit) => unit = "addEventListener"
+
 let el = id =>
   switch byId(id)->Null.toOption {
   | Some(e) => e

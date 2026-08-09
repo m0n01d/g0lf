@@ -304,5 +304,27 @@ ok("a disarmed reset does not wipe", step(resumed, ResetDisarmed).m.run.hole ===
     M.browserOwnsBall(step(shifting, "ShiftDone").m) === false)
 }
 
+// ---------------------------------------- the still-air course the cheat uses
+{
+  const windy = T.generate(36)
+  const still = T.calm(windy)
+  ok("a windy hole really is windy", Math.abs(windy.wind) > 150, String(windy.wind))
+  ok("calm strips the wind", still.wind === 0)
+  ok("calm changes nothing else",
+    still.ys === windy.ys && still.teeX === windy.teeX && still.holeX === windy.holeX &&
+      still.holeY === windy.holeY && still.step === windy.step)
+
+  // The preview and the shot are the same computation, so on a calm hole they
+  // must agree exactly, and on a windy one they must not.
+  const from = { x: windy.teeX, y: windy.teeY + P.ballR }
+  const shot = t => P.simulate(t, from.x, from.y, 560, 700)
+  ok("wind moves where the ball ends up",
+    Math.abs(shot(windy).endX - shot(still).endX) > 25,
+    `${shot(windy).endX.toFixed(1)} vs ${shot(still).endX.toFixed(1)}`)
+  const calmHole = T.generate(1)
+  ok("a calm hole predicts itself exactly",
+    shot(calmHole).endX === shot(T.calm(calmHole)).endX)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

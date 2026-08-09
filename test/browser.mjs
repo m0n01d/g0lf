@@ -313,6 +313,39 @@ console.log(`\nchecking ${baseUrl}\n`)
   await p.context().close()
 }
 
+// -------------------------- 5b. the preview draws the still-air path only
+// The cheat shows the ideal line and says nothing about the wind — that is the
+// game. Check 5 above runs on hole 1, which is dead calm, and pins the two
+// together to under a pixel. Here the wind is 61% of maximum, and the dots must
+// visibly disagree with where the ball actually ends up.
+{
+  const p = await newPage()
+  await p.evaluate(() => localStorage.setItem("g0lf.run.v1", "1|36|0|0|0|0|1"))
+  await p.reload({ waitUntil: "networkidle" })
+  await p.waitForTimeout(400)
+  ok("resumed on a windy hole", (await hud(p)).hole === 36)
+  const wind = await p.evaluate(() =>
+    parseFloat(getComputedStyle(document.getElementById("stage")).getPropertyValue("--wind")))
+  ok("the hole really is windy", wind > 0.5, "--wind=" + wind)
+
+  // Pull down-left to launch up-right, hard enough to spend real time airborne.
+  await p.mouse.move(450, 300)
+  await p.mouse.down()
+  await p.mouse.move(375, 394, { steps: 10 })
+  await p.waitForTimeout(200)
+  const predicted = await p.evaluate(() => {
+    const d = [...document.querySelectorAll("#trail i")].at(-1)
+    return { x: parseFloat(d.style.left), y: parseFloat(d.style.top) }
+  })
+  await p.mouse.up()
+  await settle(p, 4600)
+  const landed = await hud(p)
+  const drift = Math.abs(landed.ballX - predicted.x)
+  ok("the wind pushes the ball off the previewed line (>25px)",
+    drift > 25, `predicted x=${predicted.x.toFixed(1)} actual x=${landed.ballX.toFixed(1)}`)
+  await p.context().close()
+}
+
 // -------------------------------------------- 6. the sky actually moves
 // Regression: the first version was too subtle to perceive at all.
 {
@@ -495,6 +528,87 @@ console.log(`\nchecking ${baseUrl}\n`)
       const w = document.getElementById("world").getBoundingClientRect()
       return Math.abs(w.width - window.innerWidth) < 2
     }))
+  await p.context().close()
+}
+
+// ------------------------------------ 8b. rotating re-projects the world
+// The installed app came back from a rotation cropped, with dead space around
+// it: the world was still projected for the previous orientation. Rotate back
+// and forth and check the projection tracks the viewport every time.
+{
+  const p = await newPage({ viewport: { width: 390, height: 844 } })
+  const fits = async label => {
+    const r = await p.evaluate(() => {
+      const w = document.getElementById("world").getBoundingClientRect()
+      const s = document.getElementById("stage").getBoundingClientRect()
+      return {
+        world: Math.abs(w.width - innerWidth),
+        stageW: Math.abs(s.width - innerWidth),
+        stageH: Math.abs(s.height - innerHeight),
+        floor: Math.abs(w.bottom - innerHeight),
+      }
+    })
+    ok(`the world fills the screen ${label}`,
+      r.world < 2 && r.stageW < 2 && r.stageH < 2 && r.floor < 2, JSON.stringify(r))
+  }
+  await fits("in portrait")
+  for (const [w, h, name] of [
+    [844, 390, "rotated to landscape"],
+    [390, 844, "rotated back to portrait"],
+    [844, 390, "rotated to landscape again"],
+  ]) {
+    await p.setViewportSize({ width: w, height: h })
+    await p.waitForTimeout(700)   // past the delayed re-measure
+    await fits(name)
+  }
+  await p.context().close()
+}
+
+// ------------------------------------------- 9. the sun sets behind the dunes
+// The disc is painted before the ridges, which looks like it should be enough —
+// and is not: both ridge layers are translucent, so the sun showed through them
+// as a ghost circle lying on the sand. Checked by looking rather than by reading
+// the clip back: three frames isolate the horizon and the sun independently, and
+// every pixel the sun paints must be above the crest in its own column.
+{
+  const p = await newPage()
+  // Three frames, differing one element at a time. Changing what an element
+  // paints nudges Chromium's rasterisation by 4-7/255 along the clip-path
+  // edges, so the threshold has to be above that: measured, an unclipped sun
+  // leaks 503 pixels at >15 and a clipped one leaks none, which is the margin
+  // this check lives in.
+  const frame = async mode => {
+    await p.evaluate(m => {
+      document.querySelectorAll(".stars,.clouds,.bird,.sand").forEach(e => (e.style.display = "none"))
+      document.getElementById("world").style.visibility = m === "sky" ? "hidden" : ""
+      document.querySelector(".sun").style.background = m === "dunes" ? "none" : ""
+      for (const a of document.getAnimations()) { a.pause(); a.currentTime = 0 }
+    }, mode)
+    await p.waitForTimeout(150)
+    return PNG.sync.read(await p.screenshot({ clip: { x: 0, y: 0, width: 900, height: 600 } }))
+  }
+  const sky = await frame("sky")      // bare gradient: no dunes, no sun
+  const dunes = await frame("dunes")  // dunes on the gradient, sun not painted
+  const all = await frame("all")      // dunes and sun
+  const delta = (a, b, x, y) => {
+    const i = (y * 900 + x) * 4
+    return Math.max(Math.abs(a.data[i] - b.data[i]), Math.abs(a.data[i + 1] - b.data[i + 1]),
+      Math.abs(a.data[i + 2] - b.data[i + 2]))
+  }
+  let drawn = 0, leaked = 0, worst = 0
+  for (let x = 0; x < 900; x++) {
+    // Top of the dune silhouette in this column: the first row where the dunes
+    // frame departs from the bare sky.
+    let crest = 600
+    for (let y = 0; y < 600; y++) if (delta(dunes, sky, x, y) > 12) { crest = y; break }
+    for (let y = 0; y < 600; y++) {
+      if (delta(all, dunes, x, y) <= 15) continue
+      if (y > crest + 2) { leaked++; worst = Math.max(worst, y - crest) } else drawn++
+    }
+  }
+  ok("the sun is actually drawn in the sky", drawn > 800, drawn + " px")
+  ok("no part of the sun paints below the dune crest",
+    leaked === 0, `${leaked} px, reaching ${worst}px below the horizon`)
   await p.context().close()
 }
 

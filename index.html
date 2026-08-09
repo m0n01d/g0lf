@@ -37,7 +37,10 @@
       <div class="bird bird-2"><i class="l"></i><i class="r"></i></div>
 
       <div id="world" class="world">
-        <div class="sun"></div>
+        <!-- The disc is clipped to the sky so it sets *behind* the dunes. Both
+             ridge layers are translucent, so without this its lower half showed
+             straight through them as a ghost circle lying on the sand. -->
+        <div id="sunClip" class="sun-clip"><div class="sun"></div></div>
 
         <div id="far2" class="ridge ridge-far"></div>
         <div id="far1" class="ridge ridge-near"></div>

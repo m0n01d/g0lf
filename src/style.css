@@ -253,6 +253,14 @@ body {
   transform-origin: 0 100%;
 }
 
+/* Clipped by the view to the sky above the ridge crests. The ground and crust
+   are opaque and hide whatever is behind them for free; the ridges are not, so
+   the sun needs the horizon cut out of it explicitly. */
+.sun-clip {
+  position: absolute;
+  inset: 0;
+}
+
 .sun {
   position: absolute;
   left: 500px;
@@ -513,6 +521,7 @@ body {
 .ground,
 .crust,
 .ridge,
+.sun-clip,
 .cup,
 .flag,
 .ball-x,
@@ -523,7 +532,8 @@ body {
 }
 .stage.shifting .ground,
 .stage.shifting .crust,
-.stage.shifting .ridge {
+.stage.shifting .ridge,
+.stage.shifting .sun-clip {
   transition-property: clip-path;
   transition-duration: var(--shift);
   transition-timing-function: var(--ease-shift);
